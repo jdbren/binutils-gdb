@@ -152,6 +152,7 @@ endif
 
 # These all start with e so 'make clean' can find them.
 ALL_EMULATION_SOURCES = \
+	eelf_i386_lilac.c \
 	eaix5ppc.c \
 	eaix5rs6.c \
 	eaixppc.c \
@@ -375,6 +376,7 @@ ALL_EMULATION_SOURCES = \
 ALL_EMULATIONS = $(ALL_EMULATION_SOURCES:.c=.@OBJEXT@)
 
 ALL_64_EMULATION_SOURCES = \
+	eelf_x86_64_lilac.c \
 	eaarch64cloudabi.c \
 	eaarch64cloudabib.c \
 	eaarch64elf.c \

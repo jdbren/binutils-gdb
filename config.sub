@@ -2027,7 +2027,8 @@ case $os in
 	| its* \
 	| l4re* \
 	| libertybsd* \
-	| lites* \
+	| lilac* \
+    | lites* \
 	| lnews* \
 	| luna* \
 	| lynxos* \
