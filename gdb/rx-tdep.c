@@ -1,6 +1,6 @@
 /* Target-dependent code for the Renesas RX for GDB, the GNU debugger.
 
-   Copyright (C) 2008-2024 Free Software Foundation, Inc.
+   Copyright (C) 2008-2025 Free Software Foundation, Inc.
 
    Contributed by Red Hat, Inc.
 
@@ -1063,9 +1063,7 @@ rx_gdbarch_init (struct gdbarch_info info, struct gdbarch_list *arches)
 
 /* Register the above initialization routine.  */
 
-void _initialize_rx_tdep ();
-void
-_initialize_rx_tdep ()
+INIT_GDB_FILE (rx_tdep)
 {
   gdbarch_register (bfd_arch_rx, rx_gdbarch_init);
   initialize_tdesc_rx ();

@@ -1,6 +1,6 @@
 /* Rust expression parsing for GDB, the GNU debugger.
 
-   Copyright (C) 2016-2024 Free Software Foundation, Inc.
+   Copyright (C) 2016-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -2421,9 +2421,7 @@ rust_lex_tests (void)
 
 
 
-void _initialize_rust_exp ();
-void
-_initialize_rust_exp ()
+INIT_GDB_FILE (rust_exp)
 {
   int code = regcomp (&number_regex, number_regex_text, REG_EXTENDED);
   /* If the regular expression was incorrect, it was a programming

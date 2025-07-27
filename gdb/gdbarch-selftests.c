@@ -1,6 +1,6 @@
 /* Self tests for gdbarch for GDB, the GNU debugger.
 
-   Copyright (C) 2017-2024 Free Software Foundation, Inc.
+   Copyright (C) 2017-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -183,9 +183,7 @@ check_stack_growth (struct gdbarch *gdbarch)
 
 } /* namespace selftests */
 
-void _initialize_gdbarch_selftests ();
-void
-_initialize_gdbarch_selftests ()
+INIT_GDB_FILE (gdbarch_selftests)
 {
   selftests::register_test_foreach_arch ("register_to_value",
 					 selftests::register_to_value_test);

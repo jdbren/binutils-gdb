@@ -1,6 +1,6 @@
 /* Interface between GDB and target environments, including files and processes
 
-   Copyright (C) 1990-2024 Free Software Foundation, Inc.
+   Copyright (C) 1990-2025 Free Software Foundation, Inc.
 
    Contributed by Cygnus Support.  Written by John Gilmore.
 
@@ -1016,8 +1016,8 @@ struct target_ops
        filesystem seen by the debugger (GDB or, for remote targets, the
        remote stub).  Return 0 on success, or -1 if an error occurs (and
        set *TARGET_ERRNO).  */
-    virtual int fileio_stat (struct inferior *inf, const char *filename,
-			     struct stat *sb, fileio_error *target_errno);
+    virtual int fileio_lstat (struct inferior *inf, const char *filename,
+			      struct stat *sb, fileio_error *target_errno);
 
     /* Close FD on the target.  Return 0, or -1 if an error occurs
        (and set *TARGET_ERRNO).  */
@@ -2256,8 +2256,8 @@ extern int target_fileio_fstat (int fd, struct stat *sb,
    filesystem seen by the debugger (GDB or, for remote targets, the remote
    stub).  Return 0 on success, or -1 if an error occurs (and set
    *TARGET_ERRNO).  */
-extern int target_fileio_stat (struct inferior *inf, const char *filename,
-			       struct stat *sb, fileio_error *target_errno);
+extern int target_fileio_lstat (struct inferior *inf, const char *filename,
+				struct stat *sb, fileio_error *target_errno);
 
 /* Close FD on the target.  Return 0, or -1 if an error occurs
    (and set *TARGET_ERRNO).  */
@@ -2472,8 +2472,14 @@ extern void target_pre_inferior ();
 
 extern void target_preopen (int);
 
+/* Using the objfile specified in OBJFILE, find the address for the
+   current thread's thread-local storage with offset OFFSET.  If it's
+   provided, NAME might be used to indicate the relevant variable
+   in an error message.  */
+
 extern CORE_ADDR target_translate_tls_address (struct objfile *objfile,
-					       CORE_ADDR offset);
+					       CORE_ADDR offset,
+					       const char *name = nullptr);
 
 /* Return the "section" containing the specified address.  */
 const struct target_section *target_section_by_addr (struct target_ops *target,

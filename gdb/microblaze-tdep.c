@@ -1,6 +1,6 @@
 /* Target-dependent code for Xilinx MicroBlaze.
 
-   Copyright (C) 2009-2024 Free Software Foundation, Inc.
+   Copyright (C) 2009-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -736,9 +736,7 @@ microblaze_gdbarch_init (struct gdbarch_info info, struct gdbarch_list *arches)
   return gdbarch;
 }
 
-void _initialize_microblaze_tdep ();
-void
-_initialize_microblaze_tdep ()
+INIT_GDB_FILE (microblaze_tdep)
 {
   gdbarch_register (bfd_arch_microblaze, microblaze_gdbarch_init);
 

@@ -1,6 +1,6 @@
 /* Perform an inferior function call, for GDB, the GNU debugger.
 
-   Copyright (C) 1986-2024 Free Software Foundation, Inc.
+   Copyright (C) 1986-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -1276,7 +1276,7 @@ call_function_by_hand_dummy (struct value *function,
 	/* A call dummy always consists of just a single breakpoint, so
 	   its address is the same as the address of the dummy.
 
-	   The actual breakpoint is inserted separatly so there is no need to
+	   The actual breakpoint is inserted separately so there is no need to
 	   write that out.  */
 	bp_addr = dummy_addr;
 	break;
@@ -1870,9 +1870,7 @@ When the function is done executing, GDB will silently stop."),
   gdb_assert_not_reached ("... should not be here");
 }
 
-void _initialize_infcall ();
-void
-_initialize_infcall ()
+INIT_GDB_FILE (infcall)
 {
   add_setshow_boolean_cmd ("may-call-functions", no_class,
 			   &may_call_functions_p, _("\

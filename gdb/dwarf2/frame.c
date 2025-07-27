@@ -1,6 +1,6 @@
 /* Frame unwinder for frames with DWARF Call Frame Information.
 
-   Copyright (C) 2003-2024 Free Software Foundation, Inc.
+   Copyright (C) 2003-2025 Free Software Foundation, Inc.
 
    Contributed by Mark Kettenis.
 
@@ -2247,9 +2247,7 @@ dwarf2_build_frame_info (struct objfile *objfile)
   set_comp_unit (objfile, unit.release ());
 }
 
-void _initialize_dwarf2_frame ();
-void
-_initialize_dwarf2_frame ()
+INIT_GDB_FILE (dwarf2_frame)
 {
 #if GDB_SELF_TEST
   selftests::register_test_foreach_arch ("execute_cfa_program",

@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2024 Free Software Foundation, Inc.
+# Copyright (C) 2007-2025 Free Software Foundation, Inc.
 
 # This file is part of GDB.
 
@@ -100,6 +100,7 @@ OUTPUTS = $(patsubst %,$(outdir)/%.dat,$(WHICH))
 # --enable-targets=all GDB.  You can override this by passing XMLTOC
 # to make on the command line.
 XMLTOC = \
+	alpha.xml \
 	microblaze-with-stack-protect.xml \
 	microblaze.xml \
 	mips-dsp-linux.xml \

@@ -87,7 +87,6 @@ AC_EXEEXT
 
 ALL_LINGUAS="da de es fi fr ga id it nl pt_BR ro sr sv tr uk vi zh_CN"
 ZW_GNU_GETTEXT_SISTER_DIR
-AM_PO_SUBDIRS
 
 . ${srcdir}/../bfd/configure.host
 
@@ -383,7 +382,7 @@ if test x${all_targets} = xfalse ; then
 
 else	# all_targets is true
     archdefs=-DARCH_all
-    if test "$enable_64_bit_bfd" = "yes" ; then
+    if test "$have_64_bit_bfd" = "yes" ; then
 	BFD_MACHINES='$(ALL32_MACHINES) $(ALL64_MACHINES)'
     else
 	BFD_MACHINES='$(ALL32_MACHINES)'

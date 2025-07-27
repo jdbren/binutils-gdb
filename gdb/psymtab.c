@@ -1,6 +1,6 @@
 /* Partial symbol tables.
 
-   Copyright (C) 2009-2024 Free Software Foundation, Inc.
+   Copyright (C) 2009-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -1552,9 +1552,7 @@ maintenance_check_psymtabs (const char *ignore, int from_tty)
     }
 }
 
-void _initialize_psymtab ();
-void
-_initialize_psymtab ()
+INIT_GDB_FILE (psymtab)
 {
   add_cmd ("psymbols", class_maintenance, maintenance_print_psymbols, _("\
 Print dump of current partial symbol definitions.\n\

@@ -1,6 +1,6 @@
 /* Common definitions.
 
-   Copyright (C) 1986-2024 Free Software Foundation, Inc.
+   Copyright (C) 1986-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -25,6 +25,14 @@
 
 /* Work around PR gcc/110799.  */
 #pragma GCC optimize("-fno-hoist-adjacent-loads")
+#endif
+
+#if defined (__GNUC__) && !defined (__clang__) \
+  && ((__GNUC__ >= 12 && __GNUC__ <= 15)       \
+      || (__GNUC__ == 16 && __GNUC_MINOR__ < 1))
+/* Work around PR gcc/120987 starting gcc 12, and assume it will be fixed in
+   the gcc 16.1 release.  */
+#pragma GCC optimize("-fno-ipa-modref")
 #endif
 
 #include <gdbsupport/config.h>

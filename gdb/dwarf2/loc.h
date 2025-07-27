@@ -1,6 +1,6 @@
 /* DWARF 2 location expression support for GDB.
 
-   Copyright (C) 2003-2024 Free Software Foundation, Inc.
+   Copyright (C) 2003-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -20,6 +20,7 @@
 #ifndef GDB_DWARF2_LOC_H
 #define GDB_DWARF2_LOC_H
 
+#include "gdbtypes.h"
 #include "dwarf2/expr.h"
 
 struct symbol_computed_ops;
@@ -99,30 +100,8 @@ struct property_addr_info
 
   /* If not NULL, a pointer to the info for the object containing
      the object described by this node.  */
-  struct property_addr_info *next;
+  const property_addr_info *next;
 };
-
-/* Converts a dynamic property into a static one.  FRAME is the frame in which
-   the property is evaluated; if NULL, the selected frame (if any) is used
-   instead.
-
-   ADDR_STACK is the stack of addresses that might be needed to evaluate the
-   property. When evaluating a property that is not related to a type, it can
-   be NULL.
-
-   Returns true if PROP could be converted and the static value is passed
-   back into VALUE, otherwise returns false.
-
-   Any values in PUSH_VALUES will be pushed before evaluating the location
-   expression, PUSH_VALUES[0] will be pushed first, then PUSH_VALUES[1],
-   etc.  This means the during evaluation PUSH_VALUES[0] will be at the
-   bottom of the stack.  */
-
-bool dwarf2_evaluate_property (const struct dynamic_prop *prop,
-			       const frame_info_ptr &frame,
-			       const property_addr_info *addr_stack,
-			       CORE_ADDR *value,
-			       gdb::array_view<CORE_ADDR> push_values = {});
 
 /* A helper for the compiler interface that compiles a single dynamic
    property to C code.
@@ -167,12 +146,32 @@ struct dwarf2_locexpr_baton
      directly.  */
   bool is_reference;
 
+  /* True if this object is actually a dwarf2_field_location_baton.  */
+  bool is_field_location;
+
   /* The objfile that was used when creating this.  */
   dwarf2_per_objfile *per_objfile;
 
   /* The compilation unit containing the symbol whose location
      we're computing.  */
   dwarf2_per_cu *per_cu;
+};
+
+/* If the DWARF location for a field used DW_AT_bit_size, then an
+   object of this type is created to represent the field location.
+   This is then used to apply the bit offset after computing the
+   field's byte offset.  Objects of this type always set the
+   'is_field_location' member in dwarf2_locexpr_baton.  See also
+   apply_bit_offset_to_field.  */
+
+struct dwarf2_field_location_baton : public dwarf2_locexpr_baton
+{
+  /* The bit offset, coming from DW_AT_bit_offset.  */
+  LONGEST bit_offset;
+
+  /* The DW_AT_byte_size of the field.  If no explicit byte size was
+     specified, this is 0.  */
+  LONGEST explicit_byte_size;
 };
 
 struct dwarf2_loclist_baton
@@ -202,23 +201,6 @@ struct dwarf2_loclist_baton
   unsigned char dwarf_version;
 };
 
-/* The baton used when a dynamic property is an offset to a parent
-   type.  This can be used, for instance, then the bound of an array
-   inside a record is determined by the value of another field inside
-   that record.  */
-
-struct dwarf2_offset_baton
-{
-  /* The offset from the parent type where the value of the property
-     is stored.  In the example provided above, this would be the offset
-     of the field being used as the array bound.  */
-  LONGEST offset;
-
-  /* The type of the object whose property is dynamic.  In the example
-     provided above, this would the array's index type.  */
-  struct type *type;
-};
-
 /* A dynamic property is either expressed as a single location expression
    or a location list.  If the property is an indirection, pointing to
    another die, keep track of the targeted type in PROPERTY_TYPE.
@@ -241,8 +223,8 @@ struct dwarf2_property_baton
     /* Location list to be evaluated in the context of PROPERTY_TYPE.  */
     struct dwarf2_loclist_baton loclist;
 
-    /* The location is an offset to PROPERTY_TYPE.  */
-    struct dwarf2_offset_baton offset_info;
+    /* The location is stored in a field of PROPERTY_TYPE.  */
+    struct field field;
   };
 };
 
@@ -307,8 +289,53 @@ extern struct value *indirect_synthetic_pointer
    Function always returns non-NULL value.  It throws NO_ENTRY_VALUE_ERROR if
    it cannot resolve the parameter for any reason.  */
 
+#if defined(DWARF_FORMAT_AVAILABLE)
+
+/* Converts a dynamic property into a static one.  FRAME is the frame in which
+   the property is evaluated; if NULL, the selected frame (if any) is used
+   instead.
+
+   ADDR_STACK is the stack of addresses that might be needed to evaluate the
+   property. When evaluating a property that is not related to a type, it can
+   be NULL.
+
+   Returns true if PROP could be converted and the static value is passed
+   back into VALUE, otherwise returns false.
+
+   Any values in PUSH_VALUES will be pushed before evaluating the location
+   expression, PUSH_VALUES[0] will be pushed first, then PUSH_VALUES[1],
+   etc.  This means the during evaluation PUSH_VALUES[0] will be at the
+   bottom of the stack.  */
+
+bool dwarf2_evaluate_property (const struct dynamic_prop *prop,
+			       const frame_info_ptr &frame,
+			       const property_addr_info *addr_stack,
+			       CORE_ADDR *value,
+			       gdb::array_view<CORE_ADDR> push_values = {});
+
 extern struct value *value_of_dwarf_reg_entry (struct type *type,
 					       const frame_info_ptr &frame,
 					       enum call_site_parameter_kind kind,
 					       union call_site_parameter_u kind_u);
+
+#else /* DWARF_FORMAT_AVAILABLE */
+
+static inline bool
+dwarf2_evaluate_property (const struct dynamic_prop *, const frame_info_ptr &,
+			  const property_addr_info *, CORE_ADDR *,
+			  gdb::array_view<CORE_ADDR> = {})
+{
+  return false;
+}
+
+static inline struct value *
+value_of_dwarf_reg_entry (struct type *type, const frame_info_ptr &frame,
+			  enum call_site_parameter_kind kind,
+			  union call_site_parameter_u kind_u)
+{
+  error (_("No dwarf support available."));
+}
+
+#endif /* DWARF_FORMAT_AVAILABLE */
+
 #endif /* GDB_DWARF2_LOC_H */

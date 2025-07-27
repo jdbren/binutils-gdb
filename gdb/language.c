@@ -1,6 +1,6 @@
 /* Multiple source language support for GDB.
 
-   Copyright (C) 1991-2024 Free Software Foundation, Inc.
+   Copyright (C) 1991-2025 Free Software Foundation, Inc.
 
    Contributed by the Department of Computer Science at the State University
    of New York at Buffalo.
@@ -1095,9 +1095,7 @@ language_lookup_primitive_type_as_symbol (const struct language_defn *la,
 
 /* Initialize the language routines.  */
 
-void _initialize_language ();
-void
-_initialize_language ()
+INIT_GDB_FILE (language)
 {
   static const char *const type_or_range_names[]
     = { "on", "off", "warn", "auto", NULL };

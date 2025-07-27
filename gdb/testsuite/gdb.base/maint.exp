@@ -1,4 +1,4 @@
-# Copyright 1998-2024 Free Software Foundation, Inc.
+# Copyright 1998-2025 Free Software Foundation, Inc.
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -50,6 +50,40 @@ standard_testfile break.c break1.c
 if {[prepare_for_testing "failed to prepare" $testfile \
 	 [list $srcfile $srcfile2] {debug nowarnings}]} {
     return -1
+}
+
+# Check "maint set per-command" warnings.  We do this early so that
+# the following tests don't need to expect them, as GDB only warns
+# once.
+
+with_test_prefix "warnings" {
+    # Potential warning given by "maint set per-command time".
+    set maybe_per_command_warning \
+	"(?:warning: per-thread run time information not available on this platform)?"
+
+    # This one should not issue the "per-command time" warning.
+    with_test_prefix "per-command space" {
+	gdb_test_no_output "mt set per-command space on"
+	gdb_test_no_output "mt set per-command space off"
+    }
+
+    # These might warn.  "per-command on" enables all sub commands, so
+    # might trigger the "per-command time" warning.
+    foreach cmd {"per-command" "per-command time"} {
+	with_test_prefix $cmd {
+	    # GDB only warns once, so restart between commands.
+	    clean_restart $binfile
+	    gdb_test "mt set $cmd on" "$maybe_per_command_warning"
+	    gdb_test "mt set $cmd off" "command started"
+	    gdb_test_no_output "mt set $cmd on"  \
+		"mt set $cmd on, again"
+	    gdb_test "mt set $cmd off" "command started" \
+		"mt set $cmd off, again"
+	}
+    }
+
+    # We've already warned once above, so the following tests don't
+    # need to expect the warning.
 }
 
 set readnow_p [readnow]
@@ -205,8 +239,8 @@ set re \
 	 "(  Number of \"partial\" symbols read: $decimal" \
 	 ")?(  Number of psym tables \\(not yet expanded\\): $decimal" \
 	 ")?(  Total memory used for psymbol cache: $decimal" \
-	 ")?(  Number of read CUs: $decimal" \
-	 "  Number of unread CUs: $decimal" \
+	 ")?(  Number of read units: $decimal" \
+	 "  Number of unread units: $decimal" \
 	 ")?  Total memory used for objfile obstack: $decimal" \
 	 "  Total memory used for BFD obstack: $decimal" \
 	 "  Total memory used for string cache: $decimal" \
@@ -512,5 +546,10 @@ gdb_start
 gdb_test_no_output "maint print symbols"
 gdb_test_no_output "maint print msymbols"
 gdb_test_no_output "maint print psymbols"
+
+gdb_test "maint canonicalize int short" "canonical = short"
+gdb_test "maint canonicalize fn<ty<int>>" \
+    "canonical = fn<ty<int> >"
+gdb_test "maint canonical unsigned int" "No change\\."
 
 gdb_exit

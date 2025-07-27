@@ -1,6 +1,6 @@
 /* Generate a core file for the inferior process.
 
-   Copyright (C) 2001-2024 Free Software Foundation, Inc.
+   Copyright (C) 2001-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -861,9 +861,7 @@ gcore_find_signalled_thread ()
   return nullptr;
 }
 
-void _initialize_gcore ();
-void
-_initialize_gcore ()
+INIT_GDB_FILE (gcore)
 {
   cmd_list_element *generate_core_file_cmd
     = add_com ("generate-core-file", class_files, gcore_command, _("\

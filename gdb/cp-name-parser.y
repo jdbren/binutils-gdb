@@ -1,6 +1,6 @@
 /* YACC parser for C++ names, for GDB.
 
-   Copyright (C) 2003-2024 Free Software Foundation, Inc.
+   Copyright (C) 2003-2025 Free Software Foundation, Inc.
 
    Parts of the lexer are based on c-exp.y from GDB.
 
@@ -374,6 +374,22 @@ function
 		|	colon_ext_only function_arglist start_opt
 			{ $$ = state->fill_comp (DEMANGLE_COMPONENT_TYPED_NAME, $1, $2.comp);
 			  if ($3) $$ = state->fill_comp (DEMANGLE_COMPONENT_LOCAL_NAME, $$, $3); }
+		|	colon_ext_only
+			{
+			  /* This production is a hack to handle
+			     something like "name::operator new[]" --
+			     without arguments, this ordinarily would
+			     not parse, but canonicalizing it is
+			     important.  So we infer the "()" and then
+			     remove it when converting back to string.
+			     Note that this works because this
+			     production is terminal.  */
+			  demangle_component *comp
+			    = state->fill_comp (DEMANGLE_COMPONENT_FUNCTION_TYPE,
+						nullptr, nullptr);
+			  $$ = state->fill_comp (DEMANGLE_COMPONENT_TYPED_NAME, $1, comp);
+			  state->demangle_info->added_parens = true;
+			}
 
 		|	conversion_op_name start_opt
 			{ $$ = $1.comp;
@@ -2047,6 +2063,11 @@ cp_demangled_name_to_comp (const char *demangled_name,
   auto result = std::make_unique<demangle_parse_info> ();
   cpname_state state (demangled_name, result.get ());
 
+  /* Note that we can't set yydebug here, as is done in the other
+     parsers.  Bison implements yydebug as a global, even with a pure
+     parser, and this parser is run from worker threads.  So, changing
+     yydebug causes TSan reports.  If you need to debug this parser,
+     debug gdb and set the global from the outer gdb.  */
   if (yyparse (&state))
     {
       if (state.global_errmsg && errmsg)
@@ -2106,13 +2127,17 @@ canonicalize_tests ()
 
   should_be_the_same ("Foozle<int>::fogey<Empty<int> > (Empty<int>)",
 		      "Foozle<int>::fogey<Empty<int>> (Empty<int>)");
+
+  should_be_the_same ("something :: operator new [ ]",
+		      "something::operator new[]");
+  should_be_the_same ("something :: operator   new",
+		      "something::operator new");
+  should_be_the_same ("operator()", "operator ()");
 }
 
 #endif
 
-void _initialize_cp_name_parser ();
-void
-_initialize_cp_name_parser ()
+INIT_GDB_FILE (cp_name_parser)
 {
 #if GDB_SELF_TEST
   selftests::register_test ("canonicalize", canonicalize_tests);

@@ -1,6 +1,6 @@
 /* DWARF 2 Expression Evaluator.
 
-   Copyright (C) 2001-2024 Free Software Foundation, Inc.
+   Copyright (C) 2001-2025 Free Software Foundation, Inc.
 
    Contributed by Daniel Berlin <dan@dberlin.org>.
 
@@ -256,6 +256,10 @@ private:
      but with the address being 0.  In this situation, we arrange for
      memory reads to come from the passed-in buffer.  */
   void read_mem (gdb_byte *buf, CORE_ADDR addr, size_t length);
+
+  /* Deref ADDR with size SIZE and return a value of type TYPE.
+     If TYPE == nullptr, defaults to this->address_type ().  */
+  value *deref (CORE_ADDR addr, int size, struct type *type = nullptr);
 };
 
 /* Return the value of register number REG (a DWARF register number),

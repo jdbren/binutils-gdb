@@ -1,6 +1,6 @@
 /* Self tests for the filtered_iterator class.
 
-   Copyright (C) 2019-2024 Free Software Foundation, Inc.
+   Copyright (C) 2019-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -154,9 +154,7 @@ test_filtered_iterator_eq ()
 
 } /* namespace selftests */
 
-void _initialize_filtered_iterator_selftests ();
-void
-_initialize_filtered_iterator_selftests ()
+INIT_GDB_FILE (filtered_iterator_selftests)
 {
   selftests::register_test ("filtered_iterator",
 			    selftests::test_filtered_iterator);

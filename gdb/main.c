@@ -1,6 +1,6 @@
 /* Top level stuff for GDB, the GNU debugger.
 
-   Copyright (C) 1986-2024 Free Software Foundation, Inc.
+   Copyright (C) 1986-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -399,7 +399,7 @@ start_event_loop ()
 
       try
 	{
-	  result = gdb_do_one_event ();
+	  result = current_interpreter ()->do_one_event ();
 	}
       catch (const gdb_exception_forced_quit &ex)
 	{
@@ -420,6 +420,7 @@ start_event_loop ()
 	     get around to resetting the prompt, which leaves readline
 	     in a messed-up state.  Reset it here.  */
 	  current_ui->prompt_state = PROMPT_NEEDED;
+	  current_ui->line_buffer.clear ();
 	  top_level_interpreter ()->on_command_error ();
 	  /* This call looks bizarre, but it is required.  If the user
 	     entered a command that caused an error,
@@ -672,6 +673,8 @@ captured_main_1 (struct captured_main_args *context)
   /* Ensure stderr is unbuffered.  A Cygwin pty or pipe is implemented
      as a Windows pipe, and Windows buffers on pipes.  */
   setvbuf (stderr, NULL, _IONBF, BUFSIZ);
+
+  windows_initialize_console ();
 #endif
 
   /* Note: `error' cannot be called before this point, because the
@@ -1124,7 +1127,7 @@ captured_main_1 (struct captured_main_args *context)
 
   /* Do these (and anything which might call wrap_here or *_filtered)
      after initialize_all_files() but before the interpreter has been
-     installed.  Otherwize the help/version messages will be eaten by
+     installed.  Otherwise the help/version messages will be eaten by
      the interpreter's output handler.  */
 
   if (print_version)

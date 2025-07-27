@@ -1,6 +1,6 @@
 /* Target-dependent code for GNU/Linux i386.
 
-   Copyright (C) 2000-2024 Free Software Foundation, Inc.
+   Copyright (C) 2000-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -30,6 +30,7 @@
 #include "i386-tdep.h"
 #include "i386-linux-tdep.h"
 #include "linux-tdep.h"
+#include "solib-svr4-linux.h"
 #include "utils.h"
 #include "glibc-tdep.h"
 #include "solib-svr4.h"
@@ -484,15 +485,15 @@ i386_canonicalize_syscall (int syscall)
       SYSCALL_MAP (settimeofday);
       SYSCALL_MAP_RENAME (getgroups, gdb_sys_getgroups16);
       SYSCALL_MAP_RENAME (setgroups, gdb_sys_setgroups16);
-      SYSCALL_MAP_RENAME (select, gdb_old_select);
+      SYSCALL_MAP_RENAME (select, gdb_sys_old_select);
       SYSCALL_MAP (symlink);
       SYSCALL_MAP_RENAME (oldlstat, gdb_sys_lstat);
       SYSCALL_MAP (readlink);
       SYSCALL_MAP (uselib);
       SYSCALL_MAP (swapon);
       SYSCALL_MAP (reboot);
-      SYSCALL_MAP_RENAME (readdir, gdb_old_readdir);
-      SYSCALL_MAP_RENAME (mmap, gdb_old_mmap);
+      SYSCALL_MAP_RENAME (readdir, gdb_sys_old_readdir);
+      SYSCALL_MAP_RENAME (mmap, gdb_sys_old_mmap);
       SYSCALL_MAP (munmap);
       SYSCALL_MAP (truncate);
       SYSCALL_MAP (ftruncate);
@@ -1461,8 +1462,7 @@ i386_linux_init_abi (struct gdbarch_info info, struct gdbarch *gdbarch)
 
   /* GNU/Linux uses SVR4-style shared libraries.  */
   set_gdbarch_skip_trampoline_code (gdbarch, find_solib_trampoline_target);
-  set_solib_svr4_fetch_link_map_offsets
-    (gdbarch, linux_ilp32_fetch_link_map_offsets);
+  set_solib_svr4_ops (gdbarch, make_linux_ilp32_svr4_solib_ops);
 
   /* GNU/Linux uses the dynamic linker included in the GNU C Library.  */
   set_gdbarch_skip_solib_resolver (gdbarch, glibc_skip_solib_resolver);
@@ -1490,9 +1490,7 @@ i386_linux_init_abi (struct gdbarch_info info, struct gdbarch *gdbarch)
 				  i386_linux_get_syscall_number);
 }
 
-void _initialize_i386_linux_tdep ();
-void
-_initialize_i386_linux_tdep ()
+INIT_GDB_FILE (i386_linux_tdep)
 {
   gdbarch_register_osabi (bfd_arch_i386, 0, GDB_OSABI_LINUX,
 			  i386_linux_init_abi);

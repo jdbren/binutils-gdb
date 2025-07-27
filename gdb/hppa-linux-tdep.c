@@ -1,6 +1,6 @@
 /* Target-dependent code for GNU/Linux running on PA-RISC, for GDB.
 
-   Copyright (C) 2004-2024 Free Software Foundation, Inc.
+   Copyright (C) 2004-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -32,6 +32,7 @@
 #include "regcache.h"
 #include "hppa-tdep.h"
 #include "linux-tdep.h"
+#include "solib-svr4-linux.h"
 #include "elf/common.h"
 
 /* Map DWARF DBX register numbers to GDB register numbers.  */
@@ -322,7 +323,7 @@ static const struct frame_unwind_legacy hppa_linux_sigtramp_frame_unwind (
 /* Attempt to find (and return) the global pointer for the given
    function.
 
-   This is a rather nasty bit of code searchs for the .dynamic section
+   This rather nasty bit of code searches for the .dynamic section
    in the objfile corresponding to the pc of the function we're trying
    to call.  Once it finds the addresses at which the .dynamic section
    lives in the child process, it scans the Elf32_Dyn entries for a
@@ -499,8 +500,7 @@ hppa_linux_init_abi (struct gdbarch_info info, struct gdbarch *gdbarch)
   frame_unwind_append_unwinder (gdbarch, &hppa_linux_sigtramp_frame_unwind);
 
   /* GNU/Linux uses SVR4-style shared libraries.  */
-  set_solib_svr4_fetch_link_map_offsets
-    (gdbarch, linux_ilp32_fetch_link_map_offsets);
+  set_solib_svr4_ops (gdbarch, make_linux_ilp32_svr4_solib_ops);
 
   tdep->in_solib_call_trampoline = hppa_in_solib_call_trampoline;
   set_gdbarch_skip_trampoline_code (gdbarch, hppa_skip_trampoline_code);
@@ -524,9 +524,7 @@ hppa_linux_init_abi (struct gdbarch_info info, struct gdbarch *gdbarch)
 					     svr4_fetch_objfile_link_map);
 }
 
-void _initialize_hppa_linux_tdep ();
-void
-_initialize_hppa_linux_tdep ()
+INIT_GDB_FILE (hppa_linux_tdep)
 {
   gdbarch_register_osabi (bfd_arch_hppa, 0, GDB_OSABI_LINUX,
 			  hppa_linux_init_abi);

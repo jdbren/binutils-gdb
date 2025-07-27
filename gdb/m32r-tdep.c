@@ -1,6 +1,6 @@
 /* Target-dependent code for Renesas M32R, for GDB.
 
-   Copyright (C) 1996-2024 Free Software Foundation, Inc.
+   Copyright (C) 1996-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -908,9 +908,7 @@ m32r_gdbarch_init (struct gdbarch_info info, struct gdbarch_list *arches)
   return gdbarch;
 }
 
-void _initialize_m32r_tdep ();
-void
-_initialize_m32r_tdep ()
+INIT_GDB_FILE (m32r_tdep)
 {
   gdbarch_register (bfd_arch_m32r, m32r_gdbarch_init);
 }

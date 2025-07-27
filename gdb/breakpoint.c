@@ -1,6 +1,6 @@
 /* Everything about breakpoints, for GDB.
 
-   Copyright (C) 1986-2024 Free Software Foundation, Inc.
+   Copyright (C) 1986-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -50,7 +50,6 @@
 #include "cli/cli-script.h"
 #include "block.h"
 #include "solib.h"
-#include "solist.h"
 #include "observable.h"
 #include "memattr.h"
 #include "ada-lang.h"
@@ -255,14 +254,22 @@ DIAGNOSTIC_POP
 static std::string
 breakpoint_location_address_str (const bp_location *bl)
 {
-  std::string str = string_printf ("Breakpoint %d (%s) at address %s",
+  std::string str = string_printf ("Breakpoint %d (%s) ",
 				   bl->owner->number,
-				   host_address_to_string (bl),
-				   paddress (bl->gdbarch, bl->address));
+				   host_address_to_string (bl));
 
-  std::string loc_string = bl->to_string ();
-  if (!loc_string.empty ())
-    str += string_printf (" %s", loc_string.c_str ());
+  if (bl_address_is_meaningful (bl))
+    {
+      gdb_assert (bl->gdbarch != nullptr);
+      str += string_printf ("at address %s",
+			    paddress (bl->gdbarch, bl->address));
+
+      std::string loc_string = bl->to_string ();
+      if (!loc_string.empty ())
+	str += string_printf (" %s", loc_string.c_str ());
+    }
+  else
+    str += "with dummy location";
 
   return str;
 }
@@ -721,7 +728,8 @@ all_tracepoints ()
 			   tracepoint_iterator (breakpoint_chain.end ()));
 }
 
-/* Array is sorted by bp_location_is_less_than - primarily by the ADDRESS.  */
+/* Array is sorted by bp_location_ptr_is_less_than - primarily by the
+   ADDRESS.  */
 
 static std::vector<bp_location *> bp_locations;
 
@@ -5136,7 +5144,7 @@ print_solib_event (bool is_catchpoint)
 	  if (!first)
 	    current_uiout->text ("    ");
 	  first = false;
-	  current_uiout->field_string ("library", iter->so_name);
+	  current_uiout->field_string ("library", iter->name);
 	  current_uiout->text ("\n");
 	}
     }
@@ -7504,7 +7512,7 @@ breakpoint_locations_match (const struct bp_location *loc1,
   else
     /* We compare bp_location.length in order to cover ranged
        breakpoints.  Keep this in sync with
-       bp_location_is_less_than.  */
+       bp_location_ptr_is_less_than.  */
     return (breakpoint_address_match (loc1->pspace->aspace.get (),
 				      loc1->address,
 				      loc2->pspace->aspace.get (),
@@ -8144,7 +8152,7 @@ disable_breakpoints_in_unloaded_shlib (program_space *pspace, const solib &solib
 	      target_terminal::ours_for_output ();
 	      warning (_("Temporarily disabling breakpoints "
 			 "for unloaded shared library \"%s\""),
-		       solib.so_name.c_str ());
+		       solib.name.c_str ());
 	      disabled_shlib_breaks = true;
 	    }
 	}
@@ -10289,7 +10297,7 @@ masked_watchpoint::print_recreate (struct ui_file *fp) const
     }
 
   gdb_printf (fp, " %s mask 0x%s", exp_string.get (),
-	      phex (hw_wp_mask, sizeof (CORE_ADDR)));
+	      phex (hw_wp_mask));
   print_recreate_thread (fp);
 }
 
@@ -11205,14 +11213,17 @@ breakpoint_auto_delete (bpstat *bs)
       delete_breakpoint (&b);
 }
 
-/* A comparison function for bp_location AP and BP being interfaced to
-   std::sort.  Sort elements primarily by their ADDRESS (no matter what
-   bl_address_is_meaningful says), secondarily by ordering first
-   permanent elements and tertiarily just ensuring the array is sorted
-   stable way despite std::sort being an unstable algorithm.  */
+/* A comparison function for bp_location pointers A and B being interfaced to
+   std::sort, for instance to sort an std::vector<bp_location *>.  Sort
+   elements:
+   - primarily by their ADDRESS (no matter what bl_address_is_meaningful
+     says),
+   - secondarily by ordering first permanent elements, and
+   - tertiarily just ensuring the array is sorted in a stable way despite
+     std::sort being an unstable algorithm.  */
 
-static int
-bp_location_is_less_than (const bp_location *a, const bp_location *b)
+static bool
+bp_location_ptr_is_less_than (const bp_location *a, const bp_location *b)
 {
   if (a->address != b->address)
     return a->address < b->address;
@@ -11248,6 +11259,15 @@ bp_location_is_less_than (const bp_location *a, const bp_location *b)
     return a->owner->number < b->owner->number;
 
   return a < b;
+}
+
+/* A comparison function for bp_locations A and B being interfaced to
+   std::sort, for instance to sort an std::vector<bp_location>.  */
+
+static bool
+bp_location_is_less_than (const bp_location &a, const bp_location &b)
+{
+  return bp_location_ptr_is_less_than (&a, &b);
 }
 
 /* Set bp_locations_placed_address_before_address_max and
@@ -11455,7 +11475,7 @@ update_global_location_list (enum ugll_insert_mode insert_mode)
 	handle_automatic_hardware_breakpoints (loc);
 
   std::sort (bp_locations.begin (), bp_locations.end (),
-	     bp_location_is_less_than);
+	     bp_location_ptr_is_less_than);
 
   bp_locations_target_extensions_update ();
 
@@ -11903,9 +11923,7 @@ breakpoint::add_location (bp_location &loc)
 
   auto ub = std::upper_bound (m_locations.begin (), m_locations.end (),
 			      loc,
-			      [] (const bp_location &left,
-				  const bp_location &right)
-				{ return left.address < right.address; });
+			      bp_location_is_less_than);
   m_locations.insert (ub, loc);
 }
 
@@ -14747,9 +14765,7 @@ static struct cmd_list_element *enablebreaklist = NULL;
 
 cmd_list_element *commands_cmd_element = nullptr;
 
-void _initialize_breakpoint ();
-void
-_initialize_breakpoint ()
+INIT_GDB_FILE (breakpoint)
 {
   struct cmd_list_element *c;
 

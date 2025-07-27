@@ -1,6 +1,6 @@
 /* Python interface to inferiors.
 
-   Copyright (C) 2009-2024 Free Software Foundation, Inc.
+   Copyright (C) 2009-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -428,9 +428,7 @@ connpy_send_packet (PyObject *self, PyObject *args, PyObject *kw)
 
 /* Global initialization for this file.  */
 
-void _initialize_py_connection ();
-void
-_initialize_py_connection ()
+INIT_GDB_FILE (py_connection)
 {
   gdb::observers::connection_removed.attach (connpy_connection_removed,
 					     "py-connection");

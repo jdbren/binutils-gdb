@@ -1,5 +1,5 @@
 \input texinfo      @c -*-texinfo-*-
-@c Copyright (C) 1988--2024 Free Software Foundation, Inc.
+@c Copyright (C) 1988--2025 Free Software Foundation, Inc.
 @c
 @c %**start of header
 @c makeinfo ignores cmds prev to setfilename, so its arg cannot make use
@@ -50,7 +50,7 @@
 
 @copying
 @c man begin COPYRIGHT
-Copyright @copyright{} 1988-2024 Free Software Foundation, Inc.
+Copyright @copyright{} 1988-2025 Free Software Foundation, Inc.
 
 Permission is granted to copy, distribute and/or modify this document
 under the terms of the GNU Free Documentation License, Version 1.3 or
@@ -120,7 +120,7 @@ This is the @value{EDITION} Edition, for @value{GDBN}
 @end ifset
 Version @value{GDBVN}.
 
-Copyright (C) 1988-2024 Free Software Foundation, Inc.
+Copyright (C) 1988-2025 Free Software Foundation, Inc.
 
 This edition of the GDB manual is dedicated to the memory of Fred
 Fish.  Fred was a long-standing contributor to GDB and to Free
@@ -3807,7 +3807,7 @@ Thread 1 "main" received signal SIGINT, Interrupt.
 @table @code
 @anchor{info_threads}
 @kindex info threads
-@item info threads @r{[}-gid@r{]} @r{[}@var{thread-id-list}@r{]}
+@item info threads @r{[}-gid@r{]} @r{[}-stopped@r{]} @r{[}-running@r{]} @r{[}@var{thread-id-list}@r{]}
 
 Display information about one or more threads.  With no arguments
 displays information about all threads.  You can specify the list of
@@ -3856,6 +3856,14 @@ For example,
 If you're debugging multiple inferiors, @value{GDBN} displays thread
 IDs using the qualified @var{inferior-num}.@var{thread-num} format.
 Otherwise, only @var{thread-num} is shown.
+
+If you specify the @samp{-stopped} option, @value{GDBN} filters the
+output of the command to print the stopped threads only.  Similarly,
+if you specify the @samp{-running} option, @value{GDBN} filters the
+output to print the running threads only.  These options can be
+helpful to reduce the output list if there is a large number of
+threads.  If you specify both options, @value{GDBN} prints both
+stopped and running threads.
 
 If you specify the @samp{-gid} option, @value{GDBN} displays a column
 indicating each thread's global thread ID:
@@ -4088,6 +4096,56 @@ Use @code{1} to enable, @code{0} to disable.
 @itemx show debug threads
 When @samp{on} @value{GDBN} will print additional messages when
 threads are created and deleted.
+@end table
+
+@cindex thread local storage
+@cindex @acronym{TLS}
+For some debugging targets, @value{GDBN} has support for accessing
+variables that reside in Thread Local Storage (@acronym{TLS}).
+@acronym{TLS} variables are similar to global variables, except that
+each thread has its own copy of the variable.  While often used in
+multi-threaded programs, @acronym{TLS} variables can also be used in
+programs without threads.  The C library variable @var{errno} is,
+perhaps, the most prominent example of a @acronym{TLS} variable that
+is frequently used in non-threaded programs.  For targets where
+@value{GDBN} does not have good @acronym{TLS} support, printing or
+changing the value of @var{errno} might not be directly possible.
+
+@sc{gnu}/Linux and FreeBSD targets have support for accessing
+@acronym{TLS} variables.  On @sc{gnu}/Linux, the helper library,
+@code{libthread_db}, is used to help resolve the addresses of
+@acronym{TLS} variables.  Some FreeBSD and some @sc{gnu}/Linux targets
+also have @value{GDBN}-internal @acronym{TLS} resolution code.
+@sc{gnu}/Linux targets will attempt to use the @acronym{TLS} address
+lookup functionality provided by @code{libthread_db}, but will fall
+back to using its internal @acronym{TLS} support when
+@code{libthread_db} is not available.  This can happen in
+cross-debugging scenarios or when debugging programs that are linked
+in such a way that @code{libthread_db} support is unavailable -- this
+includes statically linked programs, linking against @acronym{GLIBC}
+versions earlier than 2.34, but not with @code{libpthread}, and use of
+other (non-@acronym{GLIBC}) C libraries.
+
+@table @code
+@kindex maint set force-internal-tls-address-lookup
+@kindex maint show force-internal-tls-address-lookup
+@cindex internal @acronym{TLS} address lookup
+@item maint set force-internal-tls-address-lookup
+@itemx maint show force-internal-tls-address-lookup
+Turns on or off forced use of @value{GDBN}-internal @acronym{TLS}
+address lookup code.  Use @code{on} to enable and @code{off} to
+disable.  The default for this setting is @code{off}.
+
+When disabled, @value{GDBN} will attempt to use a helper
+@code{libthread_db} library if possible, but will fall back to use of
+its own internal @acronym{TLS} address lookup mechanisms if necessary.
+
+When enabled, @value{GDBN} will only use @value{GDBN}'s internal
+@acronym{TLS} address lookup mechanisms, if they exist.
+
+This command is only available for @sc{gnu}/Linux targets.  Its
+primary use is for testing -- certain tests in the @value{GDBN} test
+suite use this command to force use of internal TLS address lookup.
 @end table
 
 @node Forks
@@ -7807,9 +7865,9 @@ previous instruction; otherwise, it will work in record mode, if the
 platform supports reverse execution, or stop if not.
 
 Currently, process record and replay is supported on ARM, Aarch64,
-LoongArch, Moxie, PowerPC, PowerPC64, S/390, and x86 (i386/amd64) running
-GNU/Linux.  Process record and replay can be used both when native
-debugging, and when remote debugging via @code{gdbserver}.
+LoongArch, Moxie, PowerPC, PowerPC64, S/390, RISC-V and x86 (i386/amd64)
+running GNU/Linux.  Process record and replay can be used both when
+native debugging, and when remote debugging via @code{gdbserver}.
 
 When recording an inferior, @value{GDBN} may print auxiliary information
 during stepping commands and commands displaying the execution history.
@@ -13045,6 +13103,18 @@ support it could be
 variable which may be @samp{truecolor} or @samp{24bit}. Other color spaces are
 determined by the "Co" termcap which in turn depends on the @env{TERM}
 environment variable.
+
+@vindex $_active_linker_namespaces@r{, convenience variable}
+@item $_active_linker_namespaces
+Number of active linker namespaces in the inferior (@pxref{Files}).  In systems
+with no support for linker namespaces, this variable will always be set to
+@samp{1}.
+
+@vindex $_linker_namespace@r{, convenience variable}
+@item $_linker_namespace
+The namespace which contains the current location in the inferior.  This returns
+@value{GDBN}'s internal numbering for the namespace.  In systems with no support
+for linker namespaces, this variable will always be set to @samp{0}.
 
 @end table
 
@@ -22172,6 +22242,18 @@ be determined then the address range for the @code{.text} section from
 the library will be listed.  If the @code{.text} section cannot be
 found then no addresses will be listed.
 
+On systems that support linker namespaces, the output includes an
+additional column @code{NS} if the inferior has more than one active
+namespace when the command is used.  This column the linker namespace
+that the shared library was loaded into.
+
+@cindex linker namespaces
+@dfn{Linker namespaces} are a feature of some standard libraries, that allow
+shared objects to be loaded in isolated environment, eliminating the
+possibility that those objects may cross-talk.  Each set of isolated
+shared objects is said to belong to a ``namespace'', and linker related
+actions such as relocations do not cross namespace boundaries.
+
 @kindex info dll
 @item info dll @var{regex}
 This is an alias of @code{info sharedlibrary}.
@@ -22205,6 +22287,22 @@ Catchpoints}).
 command for this.  This command exists for historical reasons.  It is
 less useful than setting a catchpoint, because it does not allow for
 conditions or commands as a catchpoint does.
+
+@table @code
+@kindex info linker-namespaces
+@item info linker-namespaces
+@item info linker-namespaces @code{[[@var{n}]]}
+
+With no argument, print the number of linker namespaces which are
+currently active --- that is, namespaces that have libraries loaded
+into them.  Then, it prints the number of libraries loaded into each
+namespace, and all the libraries loaded into them, in the same way
+as @code{info sharedlibrary}.
+
+If an argument @code{[[@var{n}]]} is provided, only prints the
+library count and the libraried for the provided namespace @var{n}.
+The surrounding square brackets are optional.
+@end table
 
 @table @code
 @item set stop-on-solib-events
@@ -24684,6 +24782,10 @@ future connections is shown.  The available settings are:
 @tab @code{vFile:stat}
 @tab Host I/O
 
+@item @code{hostio-lstat-packet}
+@tab @code{vFile:lstat}
+@tab Host I/O
+
 @item @code{hostio-setfs-packet}
 @tab @code{vFile:setfs}
 @tab Host I/O
@@ -26547,8 +26649,9 @@ Show whether AArch64 debugging messages are displayed.
 
 @end table
 
-@subsubsection AArch64 SVE.
-@cindex AArch64 SVE.
+@subsubsection AArch64 Scalable Vector Extension
+@cindex Scalable Vector Extension, AArch64
+@cindex SVE, AArch64
 
 When @value{GDBN} is debugging the AArch64 architecture, if the Scalable Vector
 Extension (SVE) is present, then @value{GDBN} will provide the vector registers
@@ -26587,11 +26690,10 @@ internally by @value{GDBN} and the Linux Kernel.
 
 @end itemize
 
-@subsubsection AArch64 SME.
+@subsubsection AArch64 Scalable Matrix Extension
 @anchor{AArch64 SME}
-@cindex SME
-@cindex AArch64 SME
-@cindex Scalable Matrix Extension
+@cindex Scalable Matrix Extension, AArch64
+@cindex SME, AArch64
 
 The Scalable Matrix Extension (@url{https://community.arm.com/arm-community-blogs/b/architectures-and-processors-blog/posts/scalable-matrix-extension-armv9-a-architecture, @acronym{SME}})
 is an AArch64 architecture extension that expands on the concept of the
@@ -26783,11 +26885,10 @@ incorrect values for SVE registers (when in streaming mode).
 This is the same limitation we have for the @acronym{SVE} registers, and there
 are plans to address this limitation going forward.
 
-@subsubsection AArch64 SME2.
+@subsubsection AArch64 Scalable Matrix Extension 2
 @anchor{AArch64 SME2}
-@cindex SME2
-@cindex AArch64 SME2
-@cindex Scalable Matrix Extension 2
+@cindex Scalable Matrix Extension 2, AArch64
+@cindex SME2, AArch64
 
 The Scalable Matrix Extension 2 is an AArch64 architecture extension that
 further expands the @acronym{SME} extension with the following:
@@ -26827,8 +26928,9 @@ For more information about @acronym{SME2}, please refer to the
 official @url{https://developer.arm.com/documentation/ddi0487/latest,
 architecture documentation}.
 
-@subsubsection AArch64 Pointer Authentication.
-@cindex AArch64 Pointer Authentication.
+@subsubsection AArch64 Pointer Authentication
+@cindex Pointer Authentication, AArch64
+@cindex PAC, AArch64
 @anchor{AArch64 PAC}
 
 When @value{GDBN} is debugging the AArch64 architecture, and the program is
@@ -26838,8 +26940,9 @@ When GDB prints a backtrace, any addresses that required unmasking will be
 postfixed with the marker [PAC].  When using the MI, this is printed as part
 of the @code{addr_flags} field.
 
-@subsubsection AArch64 Memory Tagging Extension.
-@cindex AArch64 Memory Tagging Extension.
+@subsubsection AArch64 Memory Tagging Extension
+@cindex Memory Tagging Extension, AArch64
+@cindex MTE, AArch64
 
 When @value{GDBN} is debugging the AArch64 architecture, the program is
 using the v8.5-A feature Memory Tagging Extension (MTE) and there is support
@@ -27556,6 +27659,16 @@ or a prompt that does not.
 @item set prompt @var{newprompt}
 Directs @value{GDBN} to use @var{newprompt} as its prompt string henceforth.
 
+For example, this will set a blue-colored ``(gdb)'' prompt:
+
+@smallexample
+set prompt \001\033[0;34m\002(gdb)\001\033[0m\002
+@end smallexample
+
+It uses @samp{\001} and @samp{\002} to begin and end a sequence of
+non-printing characters, to make sure they're not counted in the string
+length.
+
 @kindex show prompt
 @item show prompt
 Prints a line of the form: @samp{Gdb's prompt is: @var{your-prompt}}
@@ -27891,6 +28004,19 @@ value, then @value{GDBN} will change this to @samp{off} at startup.
 @item show style enabled
 Show the current state of styling.
 
+@item set style emoji @samp{auto|on|off}
+Enable or disable the use of emoji.  On most hosts, the default is
+@samp{auto}, meaning that emoji will only be used if the host
+character set is @samp{UTF-8}; however, on Windows the default is
+@samp{off} when using the console.  Note that disabling styling as a
+whole will also prevent emoji display.
+
+Currently, emoji are printed whenever @value{GDBN} reports an error or
+a warning.
+
+@item show style emoji
+Show the current state of emoji output.
+
 @item set style sources @samp{on|off}
 Enable or disable source code styling.  This affects whether source
 code, such as the output of the @code{list} command, is styled.  The
@@ -27906,6 +28032,18 @@ then it will be used.
 
 @item show style sources
 Show the current state of source code styling.
+
+@anchor{warning-prefix}
+@item set style warning-prefix
+@itemx show style warning-prefix
+@itemx set style error-prefix
+@itemx show style error-prefix
+
+These commands control the prefix that is printed before warnings and
+errors, respectively.  This functionality is intended for use with
+emoji display, and so the prefixes are only displayed if emoji styling
+is enabled.  The defaults are the warning sign emoji for warnings, and
+and the cross mark emoji for errors.
 
 @item set style tui-current-position @samp{on|off}
 Enable or disable styling of the source and assembly code highlighted
@@ -31209,138 +31347,13 @@ appropriate @code{set style} commands.  @xref{Output Styling}.
 
 @cindex Emacs
 @cindex @sc{gnu} Emacs
-A special interface allows you to use @sc{gnu} Emacs to view (and
-edit) the source files for the program you are debugging with
-@value{GDBN}.
 
-To use this interface, use the command @kbd{M-x gdb} in Emacs.  Give the
-executable file you want to debug as an argument.  This command starts
-@value{GDBN} as a subprocess of Emacs, with input and output through a newly
-created Emacs buffer.
-@c (Do not use the @code{-tui} option to run @value{GDBN} from Emacs.)
+In @sc{gnu} Emacs there is a special interface to @value{GDBN}, which
+facilitates viewing the source code for the program you are debugging.
+There is also an IDE-like interface to GDB, with specialized buffers for
+breakpoints, stack frames and other aspects of the debugger state.
 
-Running @value{GDBN} under Emacs can be just like running @value{GDBN} normally except for two
-things:
-
-@itemize @bullet
-@item
-All ``terminal'' input and output goes through an Emacs buffer, called
-the GUD buffer.
-
-This applies both to @value{GDBN} commands and their output, and to the input
-and output done by the program you are debugging.
-
-This is useful because it means that you can copy the text of previous
-commands and input them again; you can even use parts of the output
-in this way.
-
-All the facilities of Emacs' Shell mode are available for interacting
-with your program.  In particular, you can send signals the usual
-way---for example, @kbd{C-c C-c} for an interrupt, @kbd{C-c C-z} for a
-stop.
-
-@item
-@value{GDBN} displays source code through Emacs.
-
-Each time @value{GDBN} displays a stack frame, Emacs automatically finds the
-source file for that frame and puts an arrow (@samp{=>}) at the
-left margin of the current line.  Emacs uses a separate buffer for
-source display, and splits the screen to show both your @value{GDBN} session
-and the source.
-
-Explicit @value{GDBN} @code{list} or search commands still produce output as
-usual, but you probably have no reason to use them from Emacs.
-@end itemize
-
-We call this @dfn{text command mode}.  Emacs 22.1, and later, also uses
-a graphical mode, enabled by default, which provides further buffers
-that can control the execution and describe the state of your program.
-@xref{GDB Graphical Interface,,, Emacs, The @sc{gnu} Emacs Manual}.
-
-If you specify an absolute file name when prompted for the @kbd{M-x
-gdb} argument, then Emacs sets your current working directory to where
-your program resides.  If you only specify the file name, then Emacs
-sets your current working directory to the directory associated
-with the previous buffer.  In this case, @value{GDBN} may find your
-program by searching your environment's @env{PATH} variable, but on
-some operating systems it might not find the source.  So, although the
-@value{GDBN} input and output session proceeds normally, the auxiliary
-buffer does not display the current source and line of execution.
-
-The initial working directory of @value{GDBN} is printed on the top
-line of the GUD buffer and this serves as a default for the commands
-that specify files for @value{GDBN} to operate on.  @xref{Files,
-,Commands to Specify Files}.
-
-By default, @kbd{M-x gdb} calls the program called @file{gdb}.  If you
-need to call @value{GDBN} by a different name (for example, if you
-keep several configurations around, with different names) you can
-customize the Emacs variable @code{gud-gdb-command-name} to run the
-one you want.
-
-In the GUD buffer, you can use these special Emacs commands in
-addition to the standard Shell mode commands:
-
-@table @kbd
-@item C-h m
-Describe the features of Emacs' GUD Mode.
-
-@item C-c C-s
-Execute to another source line, like the @value{GDBN} @code{step} command; also
-update the display window to show the current file and location.
-
-@item C-c C-n
-Execute to next source line in this function, skipping all function
-calls, like the @value{GDBN} @code{next} command.  Then update the display window
-to show the current file and location.
-
-@item C-c C-i
-Execute one instruction, like the @value{GDBN} @code{stepi} command; update
-display window accordingly.
-
-@item C-c C-f
-Execute until exit from the selected stack frame, like the @value{GDBN}
-@code{finish} command.
-
-@item C-c C-r
-Continue execution of your program, like the @value{GDBN} @code{continue}
-command.
-
-@item C-c <
-Go up the number of frames indicated by the numeric argument
-(@pxref{Arguments, , Numeric Arguments, Emacs, The @sc{gnu} Emacs Manual}),
-like the @value{GDBN} @code{up} command.
-
-@item C-c >
-Go down the number of frames indicated by the numeric argument, like the
-@value{GDBN} @code{down} command.
-@end table
-
-In any source file, the Emacs command @kbd{C-x @key{SPC}} (@code{gud-break})
-tells @value{GDBN} to set a breakpoint on the source line point is on.
-
-In text command mode, if you type @kbd{M-x speedbar}, Emacs displays a
-separate frame which shows a backtrace when the GUD buffer is current.
-Move point to any frame in the stack and type @key{RET} to make it
-become the current frame and display the associated source in the
-source buffer.  Alternatively, click @kbd{Mouse-2} to make the
-selected frame become the current one.  In graphical mode, the
-speedbar displays watch expressions.
-
-If you accidentally delete the source-display buffer, an easy way to get
-it back is to type the command @code{f} in the @value{GDBN} buffer, to
-request a frame display; when you run under Emacs, this recreates
-the source buffer if necessary to show you the context of the current
-frame.
-
-The source files displayed in Emacs are in ordinary Emacs buffers
-which are visiting the source files in the usual way.  You can edit
-the files with these buffers if you wish; but keep in mind that @value{GDBN}
-communicates with Emacs in terms of line numbers.  If you add or
-delete lines from the text, the line numbers that @value{GDBN} knows cease
-to correspond properly with the code.
-
-A more detailed description of Emacs' interaction with @value{GDBN} is
+A detailed description of Emacs' interaction with @value{GDBN} is
 given in the Emacs manual (@pxref{Debuggers,,, Emacs, The @sc{gnu}
 Emacs Manual}).
 
@@ -41351,7 +41364,7 @@ libpython is present and found at configure time.)  Python makes
 @value{GDBN} scripting much more powerful than the restricted CLI
 scripting language.  If your host does not have Python installed, you
 can find it on @url{http://www.python.org/download/}.  The oldest version
-of Python supported by GDB is 3.0.1.  The optional argument @var{python}
+of Python supported by GDB is 3.4.  The optional argument @var{python}
 is used to find the Python headers and libraries.  It can be either
 the name of a Python executable, or the name of the directory in which
 Python is installed.
@@ -41548,6 +41561,13 @@ Translate the given format string and list of argument expressions
 into remote agent bytecodes and display them as a disassembled list.
 This command is useful for debugging the agent version of dynamic
 printf (@pxref{Dynamic Printf}).
+
+@kindex maint canonicalize
+@item maint canonicalize @var{name}
+Print the canonical form of @var{name}, a C@t{++} name.  Because a
+C@t{++} name may have multiple possible spellings, @value{GDBN}
+computes a canonical form of a name for internal use.  For example,
+@code{short int} and @code{short} are two ways to name the same type.
 
 @kindex maint info breakpoints
 @anchor{maint info breakpoints}
@@ -42745,6 +42765,23 @@ reports and error and the command is aborted.
 
 @item show watchdog
 Show the current setting of the target wait timeout.
+
+@kindex maint set console-translation-mode
+@kindex maint show console-translation-mode
+@item maint set console-translation-mode @r{[}binary|text@r{]}
+@itemx maint show console-translation-mode
+Controls the translation mode of @value{GDBN} stdout/stderr.  MS-Windows
+only.  Useful for running the @value{GDBN} testsuite.
+
+The translation mode values are as follows:
+@table @code
+@item binary
+No translation.
+@item text
+Translate @samp{\n} (LF, a single Line Feed) into @samp{\r\n} (CR-LF, a
+Carriage Return-Line Feed combination).
+@end table
+
 @end table
 
 @node Remote Protocol
@@ -46721,11 +46758,27 @@ If an error occurs the return value is -1.  The format of the
 returned binary attachment is as described in @ref{struct stat}.
 
 @item vFile:stat: @var{filename}
-Get information about the file @var{filename} on the target.
-On success the information is returned as a binary attachment
-and the return value is the size of this attachment in bytes.
-If an error occurs the return value is -1.  The format of the
+Get information about the file @var{filename} on the target as if from
+a @samp{stat} call.  On success the information is returned as a binary
+attachment and the return value is the size of this attachment in
+bytes.  If an error occurs the return value is -1.  The format of the
 returned binary attachment is as described in @ref{struct stat}.
+
+If @var{filename} is a symbolic link, then the information returned is
+about the file the link refers to, this is inline with the @samp{stat}
+library call.
+
+@item vFile:lstat: @var{filename}
+Get information about the file @var{filename} on the target as if from
+an @samp{lstat} call.  On success the information is returned as a
+binary attachment and the return value is the size of this attachment
+in bytes.  If an error occurs the return value is -1.  The format of
+the returned binary attachment is as described in @ref{struct stat}.
+
+This packet is identical to @samp{vFile:stat}, except if
+@var{filename} is a symbolic link, then this packet returns
+information about the link itself, not the file that the link refers
+to, this is inline with the @samp{lstat} library call.
 
 @item vFile:unlink: @var{filename}
 Delete the file at @var{filename} on the target.  Return 0,
@@ -49194,6 +49247,7 @@ registers using the capitalization used in the description.
 
 @menu
 * AArch64 Features::
+* Alpha Features::
 * ARC Features::
 * ARM Features::
 * i386 Features::
@@ -49499,6 +49553,47 @@ of bytes.
 
 Extra registers are allowed in this feature, but they will not affect
 @value{GDBN}.
+
+@node Alpha Features
+@subsection Alpha Features
+@cindex target descriptions, Alpha Features
+
+The @samp{org.gnu.gdb.alpha.core} feature is required for Alpha targets.  It
+must contain the following 64-bit registers; note that @value{GDBN} uses the
+software names for Alpha registers:
+
+@itemize @minus
+@item
+@samp{v0}: function return value
+@item
+@samp{t0} through @samp{t12}: temporary registers
+@item
+@samp{s0} through @samp{s5}: saved registers
+@item
+@samp{fp}: frame pointer
+@item
+@samp{a0} through @samp{a5}: argument registers
+@item
+@samp{ra}: return address
+@item
+@samp{at}: assembler temporary register
+@item
+@samp{gp}: global pointer
+@item
+@samp{sp}: stack pointer
+@item
+@samp{zero}: always zero
+@item
+@samp{f0} through @samp{f30}: floating-point registers
+@item
+@samp{fpcr}: floating-point control register
+@item
+@samp{pc}: program counter
+@item
+@samp{}: an anonymous register for historical purpose
+@item
+@samp{unique}: PALcode memory slot
+@end itemize
 
 @node ARC Features
 @subsection ARC Features

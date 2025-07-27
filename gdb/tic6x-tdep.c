@@ -1,6 +1,6 @@
 /* Target dependent code for GDB on TI C6x systems.
 
-   Copyright (C) 2010-2024 Free Software Foundation, Inc.
+   Copyright (C) 2010-2025 Free Software Foundation, Inc.
    Contributed by Andrew Jenner <andrew@codesourcery.com>
    Contributed by Yao Qi <yao@codesourcery.com>
 
@@ -1293,9 +1293,7 @@ tic6x_gdbarch_init (struct gdbarch_info info, struct gdbarch_list *arches)
   return gdbarch;
 }
 
-void _initialize_tic6x_tdep ();
-void
-_initialize_tic6x_tdep ()
+INIT_GDB_FILE (tic6x_tdep)
 {
   gdbarch_register (bfd_arch_tic6x, tic6x_gdbarch_init);
 }

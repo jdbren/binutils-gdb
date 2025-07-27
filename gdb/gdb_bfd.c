@@ -1,6 +1,6 @@
 /* Definitions for BFD wrappers used by GDB.
 
-   Copyright (C) 2011-2024 Free Software Foundation, Inc.
+   Copyright (C) 2011-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -1346,9 +1346,7 @@ gdb_bfd_init ()
   error (_("fatal error: libbfd ABI mismatch"));
 }
 
-void _initialize_gdb_bfd ();
-void
-_initialize_gdb_bfd ()
+INIT_GDB_FILE (gdb_bfd)
 {
   add_cmd ("bfds", class_maintenance, maintenance_info_bfds, _("\
 List the BFDs that are currently open."),

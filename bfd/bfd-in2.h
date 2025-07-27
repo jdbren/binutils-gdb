@@ -1034,11 +1034,12 @@ bool bfd_malloc_and_get_section
    (bfd *abfd, asection *section, bfd_byte **buf);
 
 bool bfd_copy_private_section_data
-   (bfd *ibfd, asection *isec, bfd *obfd, asection *osec);
+   (bfd *ibfd, asection *isec, bfd *obfd, asection *osec,
+    struct bfd_link_info *link_info);
 
-#define bfd_copy_private_section_data(ibfd, isection, obfd, osection) \
+#define bfd_copy_private_section_data(ibfd, isec, obfd, osec, link_info) \
        BFD_SEND (obfd, _bfd_copy_private_section_data, \
-		 (ibfd, isection, obfd, osection))
+		 (ibfd, isec, obfd, osec, link_info))
 bool bfd_generic_is_group_section (bfd *, const asection *sec);
 
 const char *bfd_generic_group_name (bfd *, const asection *sec);
@@ -2302,6 +2303,16 @@ bfd_get_lto_type (const bfd *abfd)
   return abfd->lto_type;
 }
 
+static inline bool
+bfd_lto_slim_symbol_p (const bfd *abfd, const char *name)
+{
+  return (bfd_get_lto_type (abfd) != lto_non_ir_object
+	  && name != NULL
+	  && name[0] == '_'
+	  && name[1] == '_'
+	  && strcmp (name + (name[2] == '_'), "__gnu_lto_slim") == 0);
+}
+
 static inline flagword
 bfd_get_file_flags (const bfd *abfd)
 {
@@ -2892,7 +2903,14 @@ bool generic_core_file_matches_executable_p
    (bfd *core_bfd, bfd *exec_bfd);
 
 /* Extracted from format.c.  */
+bool bfd_check_format_lto (bfd *abfd, bfd_format format,
+    bool lto_sections_removed);
+
 bool bfd_check_format (bfd *abfd, bfd_format format);
+
+bool bfd_check_format_matches_lto
+   (bfd *abfd, bfd_format format, char ***matching,
+    bool lto_sections_removed);
 
 bool bfd_check_format_matches
    (bfd *abfd, bfd_format format, char ***matching);
@@ -2912,6 +2930,18 @@ const char *bfd_format_string (bfd_format format);
     || (H)->type == bfd_link_hash_defweak) \
    && bfd_is_abs_section ((H)->u.def.section) \
    && !(H)->rel_from_abs)
+
+bool _bfd_generic_link_add_one_symbol
+   (struct bfd_link_info *info,
+    bfd *abfd,
+    const char *name,
+    flagword flags,
+    asection *section,
+    bfd_vma value,
+    const char *string,
+    bool copy,
+    bool collect,
+    struct bfd_link_hash_entry **hashp);
 
 bool bfd_link_align_section (asection *, unsigned int);
 
@@ -7003,6 +7033,11 @@ enum bfd_reloc_code_real
      assembler and not (currently) written to any object files.  */
   BFD_RELOC_AARCH64_TLSDESC_LD_LO12_NC,
 
+  /* AArch64 9 bit pc-relative conditional branch and compare & branch.
+     The lowest two bits must be zero and are not stored in the
+     instruction, giving an 11 bit signed byte offset.  */
+  BFD_RELOC_AARCH64_BRANCH9,
+
   /* Tilera TILEPro Relocations.  */
   BFD_RELOC_TILEPRO_COPY,
   BFD_RELOC_TILEPRO_GLOB_DAT,
@@ -7609,7 +7644,6 @@ typedef struct bfd_target
 #define BFD_JUMP_TABLE_COPY(NAME) \
   NAME##_bfd_copy_private_bfd_data, \
   NAME##_bfd_merge_private_bfd_data, \
-  NAME##_init_private_section_data, \
   NAME##_bfd_copy_private_section_data, \
   NAME##_bfd_copy_private_symbol_data, \
   NAME##_bfd_copy_private_header_data, \
@@ -7622,16 +7656,10 @@ typedef struct bfd_target
   /* Called to merge BFD general private data from one object file
      to a common output file when linking.  */
   bool (*_bfd_merge_private_bfd_data) (bfd *, struct bfd_link_info *);
-  /* Called to initialize BFD private section data from one object file
-     to another.  */
-#define bfd_init_private_section_data(ibfd, isec, obfd, osec, link_info) \
-       BFD_SEND (obfd, _bfd_init_private_section_data, \
-		 (ibfd, isec, obfd, osec, link_info))
-  bool (*_bfd_init_private_section_data) (bfd *, sec_ptr, bfd *, sec_ptr,
-					  struct bfd_link_info *);
   /* Called to copy BFD private section data from one object file
      to another.  */
-  bool (*_bfd_copy_private_section_data) (bfd *, sec_ptr, bfd *, sec_ptr);
+  bool (*_bfd_copy_private_section_data) (bfd *, sec_ptr, bfd *, sec_ptr,
+					  struct bfd_link_info *);
   /* Called to copy BFD private symbol data from one symbol
      to another.  */
   bool (*_bfd_copy_private_symbol_data) (bfd *, asymbol *,

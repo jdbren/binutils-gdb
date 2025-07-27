@@ -81,7 +81,13 @@ if test x$ac_checking != x ; then
   AC_DEFINE(ENABLE_CHECKING, 1, [Define if you want run-time sanity checks.])
 fi
 
-BFD_64_BIT
+AC_ARG_ENABLE(64-bit-bfd,
+  AS_HELP_STRING([--enable-64-bit-bfd],
+		 [64-bit support (on hosts with narrower word sizes)]),
+  [AS_CASE([$enableval],
+	   [yes|no], [],
+	   [*], [AC_MSG_ERROR(bad value ${enableval} for 64-bit-bfd option)])],
+  [enable_64_bit_bfd=no])
 if test $enable_64_bit_bfd = yes ; then
   want64=true
 else
@@ -202,7 +208,6 @@ bfd_default_target_size=32
 
 ALL_LINGUAS="da es fi fr hr id ja ro ru rw sr sv tr uk vi zh_CN pt"
 ZW_GNU_GETTEXT_SISTER_DIR
-AM_PO_SUBDIRS
 
 # Permit host specific settings.
 . ${srcdir}/configure.host
@@ -422,14 +427,12 @@ do
     aout_vec)			 tb="$tb host-aout.lo aout32.lo" ;;
     arc_elf32_be_vec)		 tb="$tb elf32-arc.lo elf32.lo $elf" ;;
     arc_elf32_le_vec)		 tb="$tb elf32-arc.lo elf32.lo $elf" ;;
-    arm_elf32_be_vec)		 tb="$tb elf32-arm.lo elf32.lo elf-nacl.lo elf-vxworks.lo $elf" ;;
-    arm_elf32_le_vec)		 tb="$tb elf32-arm.lo elf32.lo elf-nacl.lo elf-vxworks.lo $elf" ;;
-    arm_elf32_fdpic_be_vec)	 tb="$tb elf32-arm.lo elf32.lo elf-nacl.lo elf-vxworks.lo $elf" ;;
-    arm_elf32_fdpic_le_vec)	 tb="$tb elf32-arm.lo elf32.lo elf-nacl.lo elf-vxworks.lo $elf" ;;
-    arm_elf32_nacl_be_vec)	 tb="$tb elf32-arm.lo elf32.lo elf-nacl.lo elf-vxworks.lo $elf" ;;
-    arm_elf32_nacl_le_vec)	 tb="$tb elf32-arm.lo elf32.lo elf-nacl.lo elf-vxworks.lo $elf" ;;
-    arm_elf32_vxworks_be_vec)	 tb="$tb elf32-arm.lo elf32.lo elf-nacl.lo elf-vxworks.lo $elf" ;;
-    arm_elf32_vxworks_le_vec)	 tb="$tb elf32-arm.lo elf32.lo elf-nacl.lo elf-vxworks.lo $elf" ;;
+    arm_elf32_be_vec)		 tb="$tb elf32-arm.lo elf32.lo elf-vxworks.lo $elf" ;;
+    arm_elf32_le_vec)		 tb="$tb elf32-arm.lo elf32.lo elf-vxworks.lo $elf" ;;
+    arm_elf32_fdpic_be_vec)	 tb="$tb elf32-arm.lo elf32.lo elf-vxworks.lo $elf" ;;
+    arm_elf32_fdpic_le_vec)	 tb="$tb elf32-arm.lo elf32.lo elf-vxworks.lo $elf" ;;
+    arm_elf32_vxworks_be_vec)	 tb="$tb elf32-arm.lo elf32.lo elf-vxworks.lo $elf" ;;
+    arm_elf32_vxworks_le_vec)	 tb="$tb elf32-arm.lo elf32.lo elf-vxworks.lo $elf" ;;
     arm_pe_be_vec)		 tb="$tb pe-arm.lo peigen.lo $coff" ;;
     arm_pe_le_vec)		 tb="$tb pe-arm.lo peigen.lo $coff" ;;
     arm_pe_wince_be_vec)	 tb="$tb pe-arm-wince.lo pe-arm.lo peigen.lo $coff" ;;
@@ -1034,8 +1037,7 @@ esac
 
 AC_CONFIG_FILES([Makefile bfd-in3.h:bfd-in2.h po/Makefile.in:po/Make-in])
 
-dnl We need this duplication, even though we use AM_PO_SUBDIRS, because of
-dnl our two separate POTFILES.  Yuck.
+dnl We need this duplication because of our two separate POTFILES.
 AC_CONFIG_COMMANDS([default],
 [[
 case "$srcdir" in

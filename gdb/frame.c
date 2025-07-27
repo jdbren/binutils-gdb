@@ -1,6 +1,6 @@
 /* Cache and manage frames for GDB, the GNU debugger.
 
-   Copyright (C) 1986-2024 Free Software Foundation, Inc.
+   Copyright (C) 1986-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -3424,9 +3424,7 @@ frame_info_ptr::reinflate () const
   return m_ptr;
 }
 
-void _initialize_frame ();
-void
-_initialize_frame ()
+INIT_GDB_FILE (frame)
 {
   obstack_init (&frame_cache_obstack);
 

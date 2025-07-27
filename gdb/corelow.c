@@ -1,6 +1,6 @@
 /* Core dump and executable file functions below target vector, for GDB.
 
-   Copyright (C) 1986-2024 Free Software Foundation, Inc.
+   Copyright (C) 1986-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -37,7 +37,6 @@
 #include "exec.h"
 #include "readline/tilde.h"
 #include "solib.h"
-#include "solist.h"
 #include "filenames.h"
 #include "progspace.h"
 #include "objfiles.h"
@@ -452,11 +451,8 @@ core_target::build_file_mappings ()
   const bfd_build_id *core_build_id
     = build_id_bfd_get (current_program_space->core_bfd ());
 
-  for (const auto &iter : mapped_files)
+  for (const auto &[filename, file_data] : mapped_files)
     {
-      const std::string &filename = iter.first;
-      const mapped_file &file_data = iter.second;
-
       /* If this mapped file has the same build-id as was discovered for
 	 the core-file itself, then we assume this is the main
 	 executable.  Record the filename as we can use this later.  */
@@ -540,11 +536,41 @@ core_target::build_file_mappings ()
 	  /* If ABFD was opened, but the wrong format, close it now.  */
 	  abfd = nullptr;
 
+	  /* When true, this indicates that the mapped contents of this
+	     file are available within the core file.  When false, some of
+	     the mapped contents are not available.  If the contents are
+	     entirely available within the core file, then we don't need to
+	     warn the user if GDB cannot find the file.  */
+	  bool content_is_in_core_file_p = true;
+
 	  /* Record all regions for this file as unavailable.  */
 	  for (const mapped_file::region &region : file_data.regions)
-	    m_core_unavailable_mappings.emplace_back (region.start,
-						      region.end
-						      - region.start);
+	    {
+	      /* Check to see if the region is available within the core
+		 file.  */
+	      bool found_region_in_core_file = false;
+	      for (const target_section &ts : m_core_section_table)
+		{
+		  if (ts.addr <= region.start && ts.endaddr >= region.end
+		      && (ts.the_bfd_section->flags & SEC_HAS_CONTENTS) != 0)
+		    {
+		      found_region_in_core_file = true;
+		      break;
+		    }
+		}
+
+	      /* This region is not available within the core file.
+		 Without the file available to read from it is not possible
+		 for GDB to read this mapping within the inferior.  Warn
+		 the user about this case.  */
+	      if (!found_region_in_core_file)
+		content_is_in_core_file_p = false;
+
+	      /* Record the unavailable region.  */
+	      m_core_unavailable_mappings.emplace_back (region.start,
+							region.end
+							- region.start);
+	    }
 
 	  /* And give the user an appropriate warning.  */
 	  if (build_id_mismatch)
@@ -564,7 +590,7 @@ core_target::build_file_mappings ()
 			 styled_string (file_name_style.style (),
 					expanded_fname.get ()));
 	    }
-	  else
+	  else if (!content_is_in_core_file_p)
 	    {
 	      if (expanded_fname == nullptr
 		  || filename == expanded_fname.get ())
@@ -927,7 +953,7 @@ locate_exec_from_corefile_exec_context (bfd *cbfd,
     execbfd = open_and_check_build_id (exec_name);
   else
     {
-      std::string p = (ldirname (bfd_get_filename (cbfd))
+      std::string p = (gdb_ldirname (bfd_get_filename (cbfd))
 		       + '/'
 		       + exec_name);
       execbfd = open_and_check_build_id (p.c_str ());
@@ -941,7 +967,7 @@ locate_exec_from_corefile_exec_context (bfd *cbfd,
   if (execbfd == nullptr)
     {
       const char *base_name = lbasename (exec_name);
-      std::string p = (ldirname (bfd_get_filename (cbfd))
+      std::string p = (gdb_ldirname (bfd_get_filename (cbfd))
 		       + '/'
 		       + base_name);
       execbfd = open_and_check_build_id (p.c_str ());
@@ -1151,7 +1177,7 @@ core_target_open (const char *arg, int from_tty)
   if (current_program_space->exec_bfd () == nullptr)
     set_gdbarch_from_file (current_program_space->core_bfd ());
 
-  post_create_inferior (from_tty);
+  post_create_inferior (from_tty, true);
 
   /* Now go through the target stack looking for threads since there
      may be a thread_stratum target loaded on top of target core by
@@ -2128,9 +2154,7 @@ core_target_find_mapped_file (const char *filename,
   return targ->lookup_mapped_file_info (filename, addr);
 }
 
-void _initialize_corelow ();
-void
-_initialize_corelow ()
+INIT_GDB_FILE (corelow)
 {
   add_target (core_target_info, core_target_open,
 	      filename_maybe_quoted_completer);

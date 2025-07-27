@@ -1,7 +1,7 @@
 /* Target-dependent code for the IQ2000 architecture, for GDB, the GNU
    Debugger.
 
-   Copyright (C) 2000-2024 Free Software Foundation, Inc.
+   Copyright (C) 2000-2025 Free Software Foundation, Inc.
 
    Contributed by Red Hat.
 
@@ -348,7 +348,7 @@ iq2000_skip_prologue (struct gdbarch *gdbarch, CORE_ADDR pc)
 	/* Found a line number, use it as end of prologue.  */
 	return sal.end;
 
-      /* No useable line symbol.  Use prologue parsing method.  */
+      /* No usable line symbol.  Use prologue parsing method.  */
       iq2000_init_frame_cache (&cache);
       return iq2000_scan_prologue (gdbarch, func_addr, func_end, NULL, &cache);
     }
@@ -840,9 +840,7 @@ iq2000_gdbarch_init (struct gdbarch_info info, struct gdbarch_list *arches)
    Initializer function for the iq2000 module.
    Called by gdb at start-up.  */
 
-void _initialize_iq2000_tdep ();
-void
-_initialize_iq2000_tdep ()
+INIT_GDB_FILE (iq2000_tdep)
 {
   gdbarch_register (bfd_arch_iq2000, iq2000_gdbarch_init);
 }

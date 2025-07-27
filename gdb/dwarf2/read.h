@@ -1,6 +1,6 @@
 /* DWARF 2 debugging format support for GDB.
 
-   Copyright (C) 1994-2024 Free Software Foundation, Inc.
+   Copyright (C) 1994-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -20,9 +20,12 @@
 #ifndef GDB_DWARF2_READ_H
 #define GDB_DWARF2_READ_H
 
+#if CXX_STD_THREAD
+#include <mutex>
+#endif
 #include <queue>
 #include "dwarf2/abbrev.h"
-#include "dwarf2/comp-unit-head.h"
+#include "dwarf2/unit-head.h"
 #include "dwarf2/file-and-dir.h"
 #include "dwarf2/index-cache.h"
 #include "dwarf2/mapped-index.h"
@@ -233,14 +236,14 @@ public:
   /* Backlink to the owner of this.  */
   dwarf2_per_bfd *per_bfd;
 
-  /* DWARF header of this CU.  Note that dwarf2_cu reads its own version of the
-     header, which may differ from this one, since it may pass rcuh_kind::TYPE
-     to read_comp_unit_head, whereas for dwarf2_per_cu we always pass
-     rcuh_kind::COMPILE.
+  /* DWARF header of this unit.  Note that dwarf2_cu reads its own version of
+     the header, which may differ from this one, since it may pass
+     rch_kind::TYPE to read_unit_head, whereas for dwarf2_per_cu we always pass
+     ruh_kind::COMPILE.
 
      Don't access this field directly, use the get_header method instead.  It
      should be private, but we can't make it private at the moment.  */
-  mutable comp_unit_head m_header;
+  mutable unit_head m_header;
 
   /* The file and directory for this CU.  This is cached so that we
      don't need to re-examine the DWO in some situations.  This may be
@@ -271,7 +274,7 @@ public:
   std::vector<dwarf2_per_cu *> imported_symtabs;
 
   /* Get the header of this per_cu, reading it if necessary.  */
-  const comp_unit_head *get_header () const;
+  const unit_head *get_header () const;
 
   /* Return the address size given in the compilation unit header for
      this CU.  */
@@ -512,8 +515,8 @@ struct dwarf2_per_bfd
   const char *filename () const
   { return bfd_get_filename (this->obfd); }
 
-  /* Return the CU given its index.  */
-  dwarf2_per_cu *get_cu (int index) const
+  /* Return the unit given its index.  */
+  dwarf2_per_cu *get_unit (int index) const
   {
     return this->all_units[index].get ();
   }
@@ -522,7 +525,7 @@ struct dwarf2_per_bfd
   dwarf2_per_cu *get_index_cu (int index) const
   {
     if (this->all_comp_units_index_cus.empty ())
-      return get_cu (index);
+      return get_unit (index);
 
     return this->all_comp_units_index_cus[index];
   }
@@ -533,9 +536,9 @@ struct dwarf2_per_bfd
   }
 
   /* Return the separate '.dwz' debug file.  If there is no
-     .gnu_debugaltlink section in the file, then the result depends on
-     REQUIRE: if REQUIRE is true, error out; if REQUIRE is false,
-     return nullptr.  */
+     .gnu_debugaltlink or .debug_sup section in the file, then the
+     result depends on REQUIRE: if REQUIRE is true, error out; if
+     REQUIRE is false, return nullptr.  */
   struct dwz_file *get_dwz_file (bool require = false)
   {
     gdb_assert (!require || this->dwz_file.has_value ());
@@ -546,7 +549,7 @@ struct dwarf2_per_bfd
       {
 	result = this->dwz_file->get ();
 	if (require && result == nullptr)
-	  error (_("could not read '.gnu_debugaltlink' section"));
+	  error (_("could not find supplementary DWARF file"));
       }
 
     return result;
@@ -634,8 +637,10 @@ public:
   /* Set of dwo_file objects.  */
   dwo_file_up_set dwo_files;
 
-  /* True if we've checked for whether there is a DWP file.  */
-  bool dwp_checked = false;
+#if CXX_STD_THREAD
+  /* Mutex to synchronize access to DWO_FILES.  */
+  std::mutex dwo_files_lock;
+#endif
 
   /* The DWP file if there is one, or NULL.  */
   dwp_file_up dwp_file;
@@ -705,7 +710,7 @@ public:
 
   dwarf2_per_cu *operator* () const
   {
-    return m_per_bfd->get_cu (m_index);
+    return m_per_bfd->get_unit (m_index);
   }
 
   bool operator== (const all_units_iterator &other) const
@@ -815,7 +820,7 @@ struct dwarf2_per_objfile
      BUF is assumed to be in a compilation unit described by CU_HEADER.
      Return *BYTES_READ_PTR count of bytes read from BUF.  */
   const char *read_line_string (const gdb_byte *buf,
-				const struct comp_unit_head *cu_header,
+				const struct unit_head *unit_header,
 				unsigned int *bytes_read_ptr);
 
   /* Return pointer to string at .debug_line_str offset as read from BUF.
@@ -927,7 +932,7 @@ public:
 	       dwarf2_cu *existing_cu,
 	       bool skip_partial,
 	       enum language pretend_language,
-	       const abbrev_table_cache *cache = nullptr);
+	       const abbrev_table_cache *abbrev_cache = nullptr);
 
   cutu_reader (dwarf2_per_cu &this_cu,
 	       dwarf2_per_objfile &per_objfile,
@@ -936,8 +941,6 @@ public:
 	       struct dwo_file &dwo_file);
 
   DISABLE_COPY_AND_ASSIGN (cutu_reader);
-
-  cutu_reader (cutu_reader &&) = default;
 
   /* Return true if either:
 
@@ -1027,6 +1030,31 @@ private:
 				 dwarf_tag tag = DW_TAG_padding);
 
   const char *read_dwo_str_index (ULONGEST str_index);
+
+  gdb_bfd_ref_ptr open_dwo_file (dwarf2_per_bfd *per_bfd, const char *file_name,
+				 const char *comp_dir);
+
+  dwo_file_up open_and_init_dwo_file (dwarf2_cu *cu, const char *dwo_name,
+				      const char *comp_dir);
+
+  void locate_dwo_sections (objfile *objfile, dwo_file &dwo_file);
+
+  void create_dwo_unit_hash_tables (dwo_file &dwo_file, dwarf2_cu &skeleton_cu,
+				    dwarf2_section_info &section,
+				    ruh_kind section_kind);
+
+  dwo_unit *lookup_dwo_cutu (dwarf2_cu *cu, const char *dwo_name,
+			     const char *comp_dir, ULONGEST signature,
+			     int is_debug_types);
+
+  dwo_unit *lookup_dwo_comp_unit (dwarf2_cu *cu, const char *dwo_name,
+				  const char *comp_dir, ULONGEST signature);
+
+  dwo_unit *lookup_dwo_type_unit (dwarf2_cu *cu, const char *dwo_name,
+				  const char *comp_dir);
+
+  dwo_unit *lookup_dwo_unit (dwarf2_cu *cu, die_info *comp_unit_die,
+			     const char *dwo_name);
 
   /* The bfd of die_section.  */
   bfd *m_abfd;

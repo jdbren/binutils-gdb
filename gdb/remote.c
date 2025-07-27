@@ -1,6 +1,6 @@
 /* Remote target communications for serial-line targets in custom GDB protocol
 
-   Copyright (C) 1988-2024 Free Software Foundation, Inc.
+   Copyright (C) 1988-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -80,6 +80,7 @@
 #include "async-event.h"
 #include "gdbsupport/selftest.h"
 #include "cli/cli-style.h"
+#include "gdbsupport/remote-args.h"
 
 /* The remote target.  */
 
@@ -250,6 +251,7 @@ enum {
   PACKET_vFile_readlink,
   PACKET_vFile_fstat,
   PACKET_vFile_stat,
+  PACKET_vFile_lstat,
   PACKET_qXfer_auxv,
   PACKET_qXfer_features,
   PACKET_qXfer_exec_file,
@@ -1022,8 +1024,8 @@ public:
 
   int fileio_fstat (int fd, struct stat *sb, fileio_error *target_errno) override;
 
-  int fileio_stat (struct inferior *inf, const char *filename,
-		   struct stat *sb, fileio_error *target_errno) override;
+  int fileio_lstat (struct inferior *inf, const char *filename,
+		    struct stat *sb, fileio_error *target_errno) override;
 
   int fileio_close (int fd, fileio_error *target_errno) override;
 
@@ -4943,7 +4945,7 @@ remote_target::process_initial_stop_replies (int from_tty)
 
       event_ptid = target_wait (waiton_ptid, &ws, TARGET_WNOHANG);
       if (remote_debug)
-	print_target_wait_results (waiton_ptid, event_ptid, ws);
+	print_target_wait_results (waiton_ptid, event_ptid, ws, this);
 
       switch (ws.kind ())
 	{
@@ -9035,7 +9037,7 @@ remote_target::process_g_packet (struct regcache *regcache)
 
   /* Reply describes registers byte by byte, each byte encoded as two
      hex characters.  Suck them all up, then supply them to the
-     register cacheing/storage mechanism.  */
+     register caching/storage mechanism.  */
 
   p = rs->buf.data ();
   for (i = 0; i < rsa->sizeof_g_packet; i++)
@@ -10835,16 +10837,15 @@ remote_target::extended_remote_run (const std::string &args)
 
   if (!args.empty ())
     {
-      int i;
+      std::vector<std::string> split_args = gdb::remote_args::split (args);
 
-      gdb_argv argv (args.c_str ());
-      for (i = 0; argv[i] != NULL; i++)
+      for (const auto &a : split_args)
 	{
-	  if (strlen (argv[i]) * 2 + 1 + len >= get_remote_packet_size ())
+	  if (a.size () * 2 + 1 + len >= get_remote_packet_size ())
 	    error (_("Argument list too long for run packet"));
 	  rs->buf[len++] = ';';
-	  len += 2 * bin2hex ((gdb_byte *) argv[i], rs->buf.data () + len,
-			      strlen (argv[i]));
+	  len += 2 * bin2hex ((gdb_byte *) a.c_str (), rs->buf.data () + len,
+			      a.size ());
 	}
     }
 
@@ -11650,7 +11651,7 @@ remote_target::remote_write_qxfer (const char *object_name,
   i = snprintf (rs->buf.data (), max_size,
 		"qXfer:%s:write:%s:%s:",
 		object_name, annex ? annex : "",
-		phex_nz (offset, sizeof offset));
+		phex_nz (offset));
   max_size -= (i + 1);
 
   /* Escape as much data as fits into rs->buf.  */
@@ -11715,8 +11716,8 @@ remote_target::remote_read_qxfer (const char *object_name,
   snprintf (rs->buf.data (), get_remote_packet_size () - 4,
 	    "qXfer:%s:read:%s:%s,%s",
 	    object_name, annex ? annex : "",
-	    phex_nz (offset, sizeof offset),
-	    phex_nz (n, sizeof n));
+	    phex_nz (offset),
+	    phex_nz (n));
   i = putpkt (rs->buf);
   if (i < 0)
     return TARGET_XFER_E_IO;
@@ -12014,7 +12015,7 @@ remote_target::search_memory (CORE_ADDR start_addr, ULONGEST search_space_len,
   i = snprintf (rs->buf.data (), max_size,
 		"qSearch:memory:%s;%s;",
 		phex_nz (start_addr, addr_size),
-		phex_nz (search_space_len, sizeof (search_space_len)));
+		phex_nz (search_space_len));
   max_size -= (i + 1);
 
   /* Escape as much data as fits into rs->buf.  */
@@ -13149,7 +13150,7 @@ remote_target::fileio_readlink (struct inferior *inf, const char *filename,
   return ret;
 }
 
-/* Helper function to handle ::fileio_fstat and ::fileio_stat result
+/* Helper function to handle ::fileio_fstat and ::fileio_lstat result
    processing.  When this function is called the remote syscall has been
    performed and we know we didn't get an error back.
 
@@ -13160,10 +13161,10 @@ remote_target::fileio_readlink (struct inferior *inf, const char *filename,
    data) is to be placed in ST.  */
 
 static int
-fileio_process_fstat_and_stat_reply (const char *attachment,
-				     int attachment_len,
-				     int expected_len,
-				     struct stat *st)
+fileio_process_fstat_and_lstat_reply (const char *attachment,
+				      int attachment_len,
+				      int expected_len,
+				      struct stat *st)
 {
   struct fio_stat fst;
 
@@ -13225,15 +13226,15 @@ remote_target::fileio_fstat (int fd, struct stat *st, fileio_error *remote_errno
       return 0;
     }
 
-  return fileio_process_fstat_and_stat_reply (attachment, attachment_len,
-					      ret, st);
+  return fileio_process_fstat_and_lstat_reply (attachment, attachment_len,
+					       ret, st);
 }
 
-/* Implementation of to_fileio_stat.  */
+/* Implementation of to_fileio_lstat.  */
 
 int
-remote_target::fileio_stat (struct inferior *inf, const char *filename,
-			    struct stat *st, fileio_error *remote_errno)
+remote_target::fileio_lstat (struct inferior *inf, const char *filename,
+			     struct stat *st, fileio_error *remote_errno)
 {
   struct remote_state *rs = get_remote_state ();
   char *p = rs->buf.data ();
@@ -13242,14 +13243,14 @@ remote_target::fileio_stat (struct inferior *inf, const char *filename,
   if (remote_hostio_set_filesystem (inf, remote_errno) != 0)
     return {};
 
-  remote_buffer_add_string (&p, &left, "vFile:stat:");
+  remote_buffer_add_string (&p, &left, "vFile:lstat:");
 
   remote_buffer_add_bytes (&p, &left, (const gdb_byte *) filename,
 			   strlen (filename));
 
   int attachment_len;
   const char *attachment;
-  int ret = remote_hostio_send_command (p - rs->buf.data (), PACKET_vFile_stat,
+  int ret = remote_hostio_send_command (p - rs->buf.data (), PACKET_vFile_lstat,
 					remote_errno, &attachment,
 					&attachment_len);
 
@@ -13258,8 +13259,8 @@ remote_target::fileio_stat (struct inferior *inf, const char *filename,
   if (ret < 0)
     return ret;
 
-  return fileio_process_fstat_and_stat_reply (attachment, attachment_len,
-					      ret, st);
+  return fileio_process_fstat_and_lstat_reply (attachment, attachment_len,
+					       ret, st);
 }
 
 /* Implementation of to_filesystem_is_local.  */
@@ -13763,7 +13764,7 @@ remote_target::download_tracepoint (struct bp_location *loc)
   encode_actions_rsp (loc, &tdp_actions, &stepping_actions);
 
   tpaddr = loc->address;
-  strcpy (addrbuf, phex (tpaddr, sizeof (CORE_ADDR)));
+  strcpy (addrbuf, phex (tpaddr));
   ret = snprintf (buf.data (), buf.size (), "QTDP:%x:%s:%c:%lx:%x",
 		  b->number, addrbuf, /* address */
 		  (b->enable_state == bp_enabled ? 'E' : 'D'),
@@ -14027,7 +14028,7 @@ remote_target::enable_tracepoint (struct bp_location *location)
 
   xsnprintf (rs->buf.data (), get_remote_packet_size (), "QTEnable:%x:%s",
 	     location->owner->number,
-	     phex (location->address, sizeof (CORE_ADDR)));
+	     phex (location->address));
   putpkt (rs->buf);
   remote_get_noisy_reply ();
   if (rs->buf[0] == '\0')
@@ -14043,7 +14044,7 @@ remote_target::disable_tracepoint (struct bp_location *location)
 
   xsnprintf (rs->buf.data (), get_remote_packet_size (), "QTDisable:%x:%s",
 	     location->owner->number,
-	     phex (location->address, sizeof (CORE_ADDR)));
+	     phex (location->address));
   putpkt (rs->buf);
   remote_get_noisy_reply ();
   if (rs->buf[0] == '\0')
@@ -15569,7 +15570,7 @@ remote_target::commit_requested_thread_options ()
 
       *obuf_p++ = ';';
       obuf_p += xsnprintf (obuf_p, obuf_endp - obuf_p, "%s",
-			   phex_nz (options, sizeof (options)));
+			   phex_nz (options));
       if (tp->ptid != magic_null_ptid)
 	{
 	  *obuf_p++ = ':';
@@ -15808,8 +15809,8 @@ create_fetch_memtags_request (gdb::char_vector &packet, CORE_ADDR address,
 
   std::string request = string_printf ("qMemTags:%s,%s:%s",
 				       phex_nz (address, addr_size),
-				       phex_nz (len, sizeof (len)),
-				       phex_nz (type, sizeof (type)));
+				       phex_nz (len),
+				       phex_nz (type));
 
   strcpy (packet.data (), request.c_str ());
 }
@@ -15843,8 +15844,8 @@ create_store_memtags_request (gdb::char_vector &packet, CORE_ADDR address,
   /* Put together the main packet, address and length.  */
   std::string request = string_printf ("QMemTags:%s,%s:%s:",
 				       phex_nz (address, addr_size),
-				       phex_nz (len, sizeof (len)),
-				       phex_nz (type, sizeof (type)));
+				       phex_nz (len),
+				       phex_nz (type));
   request += bin2hex (tags.data (), tags.size ());
 
   /* Check if we have exceeded the maximum packet size.  */
@@ -16161,9 +16162,7 @@ test_packet_check_result ()
 } /* namespace selftests */
 #endif /* GDB_SELF_TEST */
 
-void _initialize_remote ();
-void
-_initialize_remote ()
+INIT_GDB_FILE (remote)
 {
   add_target (remote_target_info, remote_target::open);
   add_target (extended_remote_target_info, extended_remote_target::open);
@@ -16421,6 +16420,8 @@ Show the maximum size of the address (in bits) in a memory packet."), NULL,
   add_packet_config_cmd (PACKET_vFile_fstat, "vFile:fstat", "hostio-fstat", 0);
 
   add_packet_config_cmd (PACKET_vFile_stat, "vFile:stat", "hostio-stat", 0);
+
+  add_packet_config_cmd (PACKET_vFile_lstat, "vFile:lstat", "hostio-lstat", 0);
 
   add_packet_config_cmd (PACKET_vAttach, "vAttach", "attach", 0);
 

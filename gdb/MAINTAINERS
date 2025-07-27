@@ -492,7 +492,7 @@ sim/			See sim/MAINTAINERS
 
 readline/		Master version: ftp://ftp.cwru.edu/pub/bash/
 			ALL
-			Host maintainers (host dependant parts)
+			Host maintainers (host dependent parts)
 			(but get your changes into the master version)
 
 tcl/ tk/ itcl/		ALL
@@ -602,11 +602,13 @@ Klaus Gerlicher					klaus.gerlicher@intel.com
 Mircea Gherzan					mircea.gherzan@intel.com
 Paul Gilliam					pgilliam@us.ibm.com
 Tristan Gingold					tgingold@free.fr
+Timur Golubovich				timurgol007@gmail.com
 Anton Gorenkov					xgsa@yandex.ru
 Raoul Gough					RaoulGough@yahoo.co.uk
 Anthony Green			 		green@redhat.com
 Matthew Green					mrg@eterna.com.au
 Matthew Gretton-Dann				matthew.gretton-dann@arm.com
+Aaron Griffith					aargri@gmail.com
 Maxim Grigoriev					maxim2405@gmail.com
 Jerome Guitton					guitton@act-europe.fr
 Alexandra Hájková				ahajkova@redhat.com
@@ -682,6 +684,7 @@ Fawzi Mohamed					fawzi.mohamed@nokia.com
 Jason Molenda					jmolenda@apple.com
 Chris Moller					cmoller@redhat.com
 Patrick Monnerat				patrick@monnerat.net
+Pietro Monteiro					pietro@sociotechnical.xyz
 Phil Muldoon					pmuldoon@redhat.com
 Pierre Muller					muller@sourceware.org
 Gaius Mulley					gaiusmod2@gmail.com
@@ -724,6 +727,7 @@ Theodore A. Roth				troth@openavr.org
 Yvan Roux					yvan.roux@foss.st.com
 Ian Roxborough					irox@redhat.com
 Maciej W. Rozycki				macro@orcam.me.uk
+Piotr Rudnicki					piotr.rudnicki@intel.com
 Kamil Rytarowski				n54@gmx.com
 Grace Sainsbury					graces@redhat.com
 Kei Sakamoto					sakamoto.kei@renesas.com

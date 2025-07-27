@@ -1,6 +1,6 @@
 /* Target-dependent code for FT32.
 
-   Copyright (C) 2009-2024 Free Software Foundation, Inc.
+   Copyright (C) 2009-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -310,7 +310,7 @@ ft32_skip_prologue (struct gdbarch *gdbarch, CORE_ADDR pc)
 		  return sal.end;
 		}
 	    }
-	  /* No useable line symbol.  Use result of prologue parsing method.  */
+	  /* No usable line symbol.  Use result of prologue parsing method.  */
 	  return plg_end;
 	}
     }
@@ -621,9 +621,7 @@ ft32_gdbarch_init (struct gdbarch_info info, struct gdbarch_list *arches)
 
 /* Register this machine's init routine.  */
 
-void _initialize_ft32_tdep ();
-void
-_initialize_ft32_tdep ()
+INIT_GDB_FILE (ft32_tdep)
 {
   gdbarch_register (bfd_arch_ft32, ft32_gdbarch_init);
 }

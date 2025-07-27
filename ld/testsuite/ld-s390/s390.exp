@@ -125,20 +125,30 @@ set s390xtests {
      "-m elf64_s390 tmpdir/libpltlib_64.so" "" "-m64" {plt_64-1.s}
      {{objdump "-dzrj.plt" plt_64-1.pd} {readelf "-wf" plt_64-1_eh.wf}}
      "plt_64-1_eh"}
+    {"PR32969-1: do not rewrite load of misaligned COMDAT symbol address"
+     "-m elf64_s390" "" "-m64" {pr32969a.s pr32969b.s pr32969c.s}
+     {{objdump "-dzrj.text" pr32969_64-1.dd}}
+     "pr32969_64-1"}
+    {"PR32969-2: rewrite load of aligned COMDAT symbol address"
+     "-m elf64_s390" "" "-m64" {pr32969a.s pr32969c.s pr32969b.s}
+     {{objdump "-dzrj.text" pr32969_64-2.dd}}
+     "pr32969_64-2"}
 }
 
-if [istarget "s390-*-*"] {
+if { [istarget "s390-*-*"] || [istarget "s390x-*-*"] } {
     run_ld_link_tests $s390tests
+
+    run_dump_test "pr26918-1"
+    run_dump_test "reloccheck-1"
+    run_dump_test "reloctlsle-1"
+
 }
 
 if [istarget "s390x-*-*"] {
-    run_ld_link_tests $s390tests
     run_ld_link_tests $s390xtests
-}
 
-set test_list [lsort [glob -nocomplain $srcdir/$subdir/*.d]]
-foreach t $test_list {
-    # We need to strip the ".d", but can leave the dirname.
-    verbose [file rootname $t]
-    run_dump_test [file rootname $t]
+    if { ![skip_sframe_tests] } {
+	run_dump_test "sframe-simple-1"
+	run_dump_test "sframe-plt-1"
+    }
 }

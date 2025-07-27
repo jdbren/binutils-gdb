@@ -678,9 +678,13 @@ static int use_big_obj = 0;
 /* 1 if generating code for a shared library.  */
 static int shared = 0;
 
-unsigned int x86_sframe_cfa_sp_reg;
+const unsigned int x86_sframe_cfa_sp_reg = REG_SP;
 /* The other CFA base register for SFrame stack trace info.  */
-unsigned int x86_sframe_cfa_fp_reg;
+const unsigned int x86_sframe_cfa_fp_reg = REG_FP;
+/* The return address register for SFrame stack trace info.  For AMD64, RA
+   tracking is not needed, but some directives like .cfi_undefined may use
+   RA to indicate the outermost frame.  */
+const unsigned int x86_sframe_cfa_ra_reg = REG_RA;
 
 static ginsnS *x86_ginsn_new (const symbolS *, enum ginsn_gen_mode);
 #endif
@@ -1544,40 +1548,6 @@ static const unsigned char *const alt64_patt[] = {
   alt64_9, alt64_10, alt64_11,alt64_12, alt64_13, alt64_14, alt64_15
 };
 
-/* Genenerate COUNT bytes of NOPs to WHERE from PATT with the maximum
-   size of a single NOP instruction MAX_SINGLE_NOP_SIZE.  */
-
-static void
-i386_output_nops (char *where, const unsigned char *const *patt,
-		  int count, int max_single_nop_size)
-
-{
-  /* Place the longer NOP first.  */
-  int last;
-  int offset;
-  const unsigned char *nops;
-
-  if (max_single_nop_size < 1)
-    {
-      as_fatal (_("i386_output_nops called to generate nops of at most %d bytes!"),
-		max_single_nop_size);
-      return;
-    }
-
-  nops = patt[max_single_nop_size - 1];
-  last = count % max_single_nop_size;
-
-  count -= last;
-  for (offset = 0; offset < count; offset += max_single_nop_size)
-    memcpy (where + offset, nops, max_single_nop_size);
-
-  if (last)
-    {
-      nops = patt[last - 1];
-      memcpy (where + offset, nops, last);
-    }
-}
-
 static INLINE int
 fits_in_imm7 (offsetT num)
 {
@@ -1733,20 +1703,14 @@ i386_generate_nops (fragS *fragP, char *where, offsetT count, int limit)
   if (limit == 0)
     limit = max_single_nop_size;
 
-  if (fragP->fr_type == rs_fill_nop)
+  if (limit > max_single_nop_size || limit < 1)
     {
-      /* Output NOPs for .nop directive.  */
-      if (limit > max_single_nop_size)
-	{
-	  as_bad_where (fragP->fr_file, fragP->fr_line,
-			_("invalid single nop size: %d "
-			  "(expect within [0, %d])"),
-			limit, max_single_nop_size);
-	  return;
-	}
+      as_bad_where (fragP->fr_file, fragP->fr_line,
+		    _("invalid single nop size: %d "
+		      "(expect within [0, %d])"),
+		    limit, max_single_nop_size);
+      return;
     }
-  else if (fragP->fr_type != rs_machine_dependent)
-    fragP->fr_var = count;
 
   /* Emit a plain NOP first when the last thing we saw may not have been
      a proper instruction (e.g. a stand-alone prefix or .byte).  */
@@ -1797,8 +1761,34 @@ i386_generate_nops (fragS *fragP, char *where, offsetT count, int limit)
 	}
     }
 
-  /* Generate multiple NOPs.  */
-  i386_output_nops (where, patt, count, limit);
+  int non_repeat = count % limit;
+  if (non_repeat)
+    {
+      memcpy (where, patt[non_repeat - 1], non_repeat);
+      where += non_repeat;
+      count -= non_repeat;
+    }
+
+  if (fragP->fr_type != rs_machine_dependent)
+    {
+      /* Set up the frag so that everything we have emitted so far is
+	 included in fr_fix.  The repeating larger nop only needs to
+	 be written once to the frag memory.  */
+      fragP->fr_fix = where - fragP->fr_literal;
+      if (count != 0)
+	{
+	  fragP->fr_var = limit;
+	  count = limit;
+	}
+    }
+
+  const unsigned char *nops = patt[limit - 1];
+  while (count)
+    {
+      memcpy (where, nops, limit);
+      where += limit;
+      count -= limit;
+    }
 }
 
 static INLINE int
@@ -2497,8 +2487,8 @@ operand_type_check (i386_operand_type t, enum operand_type c)
   return 0;
 }
 
-/* Return 1 if there is no conflict in 8bit/16bit/32bit/64bit/80bit size
-   between operand GIVEN and opeand WANTED for instruction template T.  */
+/* Return 1 if there is no conflict in 8bit/16bit/32bit/64bit size
+   between operand GIVEN and operand WANTED for instruction template T.  */
 
 static INLINE int
 match_operand_size (const insn_template *t, unsigned int wanted,
@@ -2518,14 +2508,22 @@ match_operand_size (const insn_template *t, unsigned int wanted,
 		   || (intel_syntax
 		       && flag_code != CODE_64BIT
 		       && (t->operand_types[wanted].bitfield.class == Reg
-			   || t->operand_types[wanted].bitfield.class == Accum
-			   || t->opcode_modifier.isstring))))
-	   || (i.types[given].bitfield.tbyte
-	       && !t->operand_types[wanted].bitfield.tbyte));
+			   || t->opcode_modifier.isstring)))));
+}
+
+/* Return 1 if there is no conflict in 80bit size
+   between operand GIVEN and operand WANTED for instruction template T.  */
+
+static INLINE int
+match_fp_size (const insn_template *t, unsigned int wanted,
+		    unsigned int given)
+{
+  return !i.types[given].bitfield.tbyte
+	 || t->operand_types[wanted].bitfield.tbyte;
 }
 
 /* Return 1 if there is no conflict in SIMD register between operand
-   GIVEN and opeand WANTED for instruction template T.  */
+   GIVEN and operand WANTED for instruction template T.  */
 
 static INLINE int
 match_simd_size (const insn_template *t, unsigned int wanted,
@@ -2542,13 +2540,15 @@ match_simd_size (const insn_template *t, unsigned int wanted,
 }
 
 /* Return 1 if there is no conflict in any size between operand GIVEN
-   and opeand WANTED for instruction template T.  */
+   and operand WANTED for instruction template T.  */
 
 static INLINE int
 match_mem_size (const insn_template *t, unsigned int wanted,
 		unsigned int given)
 {
   return (match_operand_size (t, wanted, given)
+	  && (!i.types[given].bitfield.tbyte
+	      || t->operand_types[wanted].bitfield.tbyte)
 	  && !((i.types[given].bitfield.unspecified
 		&& !i.broadcast.type
 		&& !i.broadcast.bytes
@@ -2589,49 +2589,61 @@ operand_size_match (const insn_template *t)
       && t->opcode_modifier.jump != JUMP_ABSOLUTE)
     return match;
 
+  for (j = 0; j < i.imm_operands; j++)
+    /* Instruction templates with only sign-extended 8-bit immediate
+       operand also have a second template with full-operand-size
+       immediate operand under a different opcode.  Don't match the
+       first template if sign-extended 8-bit immediate operand should
+       be excluded.  */
+    if (pp.no_imm8s
+        && !t->operand_types[j].bitfield.imm8
+        && t->operand_types[j].bitfield.imm8s)
+      {
+	gas_assert (!t->opcode_modifier.d);
+	return 0;
+      }
+
   /* Check memory and accumulator operand size.  */
-  for (j = 0; j < i.operands; j++)
+  for (; j < i.operands; j++)
     {
-      /* Instruction templates with only sign-extended 8-bit immediate
-	 operand also have a second template with full-operand-size
-	 immediate operand under a different opcode.  Don't match the
-	 first template if sign-extended 8-bit immediate operand should
-	 be excluded.  */
-      if (pp.no_imm8s
-	  && !t->operand_types[j].bitfield.imm8
-	  && t->operand_types[j].bitfield.imm8s)
-	{
-	  match = 0;
-	  break;
-	}
-
-      if (i.types[j].bitfield.class != Reg
-	  && i.types[j].bitfield.class != RegSIMD
-	  && t->opcode_modifier.operandconstraint == ANY_SIZE)
-	continue;
-
-      if (t->operand_types[j].bitfield.class == Reg
+      if (i.types[j].bitfield.class == Reg
+	  && (t->operand_types[j].bitfield.class == Reg
+	      || (t->operand_types[j].bitfield.instance == Accum
+		  && (t->operand_types[j].bitfield.byte
+		      || t->operand_types[j].bitfield.word
+		      || t->operand_types[j].bitfield.dword
+		      || t->operand_types[j].bitfield.qword)))
 	  && !match_operand_size (t, j, j))
 	{
 	  match = 0;
 	  break;
 	}
 
-      if (t->operand_types[j].bitfield.class == RegSIMD
+      if (i.types[j].bitfield.class == RegFP
+	  && (t->operand_types[j].bitfield.class == RegFP
+	      || (t->operand_types[j].bitfield.instance == Accum
+		  && t->operand_types[j].bitfield.tbyte))
+	  && !match_fp_size (t, j, j))
+	{
+	  match = 0;
+	  break;
+	}
+
+      if (i.types[j].bitfield.class == RegSIMD
+	  && (t->operand_types[j].bitfield.class == RegSIMD
+	      || (t->operand_types[j].bitfield.instance == Accum
+		  /* Note: %ymm0, %zmm0, and %tmm0 aren't marked Accum.  */
+		  && t->operand_types[j].bitfield.xmmword))
 	  && !match_simd_size (t, j, j))
 	{
 	  match = 0;
 	  break;
 	}
 
-      if (t->operand_types[j].bitfield.instance == Accum
-	  && (!match_operand_size (t, j, j) || !match_simd_size (t, j, j)))
-	{
-	  match = 0;
-	  break;
-	}
-
-      if ((i.flags[j] & Operand_Mem) && !match_mem_size (t, j, j))
+      if ((i.flags[j] & Operand_Mem)
+	  && operand_type_check (t->operand_types[j], anymem)
+	  && t->opcode_modifier.operandconstraint != ANY_SIZE
+	  && !match_mem_size (t, j, j))
 	{
 	  match = 0;
 	  break;
@@ -2644,7 +2656,7 @@ operand_size_match (const insn_template *t)
   /* Check reverse.  */
   gas_assert (i.operands >= 2);
 
-  for (j = 0; j < i.operands; j++)
+  for (j = i.imm_operands; j < i.operands; j++)
     {
       unsigned int given = i.operands - j - 1;
 
@@ -2655,20 +2667,34 @@ operand_size_match (const insn_template *t)
 	  || is_cpu (t, CpuAPX_F))
 	given = j < 2 ? 1 - j : j;
 
-      if (t->operand_types[j].bitfield.class == Reg
+      if (i.types[given].bitfield.class == Reg
+	  && (t->operand_types[j].bitfield.class == Reg
+	      || (t->operand_types[j].bitfield.instance == Accum
+		  && (t->operand_types[j].bitfield.byte
+		      || t->operand_types[j].bitfield.word
+		      || t->operand_types[j].bitfield.dword
+		      || t->operand_types[j].bitfield.qword
+		      || t->operand_types[j].bitfield.tbyte)))
 	  && !match_operand_size (t, j, given))
 	return match;
 
-      if (t->operand_types[j].bitfield.class == RegSIMD
+      if (i.types[given].bitfield.class == RegFP
+	  && (t->operand_types[j].bitfield.class == RegFP
+	      || (t->operand_types[j].bitfield.instance == Accum
+		  && t->operand_types[j].bitfield.tbyte))
+	  && !match_fp_size (t, j, given))
+	return match;
+
+      /* No need to check for Accum here: There are no such templates with D
+	 set.  */
+      if (i.types[given].bitfield.class == RegSIMD
+	  && t->operand_types[j].bitfield.class == RegSIMD
 	  && !match_simd_size (t, j, given))
 	return match;
 
-      if (t->operand_types[j].bitfield.instance == Accum
-	  && (!match_operand_size (t, j, given)
-	      || !match_simd_size (t, j, given)))
-	return match;
-
-      if ((i.flags[given] & Operand_Mem) && !match_mem_size (t, j, given))
+      if ((i.flags[given] & Operand_Mem)
+	  && operand_type_check (t->operand_types[j], anymem)
+	  && !match_mem_size (t, j, given))
 	return match;
     }
 
@@ -2694,6 +2720,23 @@ operand_type_match (i386_operand_type overlap,
   temp.bitfield.tmmword = 0;
   if (operand_type_all_zero (&temp))
     goto mismatch;
+
+  /* When a (register) instance is expected, operand size needs checking
+     to disambiguate.  */
+  if (overlap.bitfield.instance != InstanceNone
+      && !overlap.bitfield.byte
+      && !overlap.bitfield.word
+      && !overlap.bitfield.dword
+      && !overlap.bitfield.qword
+      && !overlap.bitfield.tbyte
+      && !overlap.bitfield.xmmword
+      && !overlap.bitfield.ymmword
+      && !overlap.bitfield.zmmword
+      && !overlap.bitfield.tmmword)
+    {
+      gas_assert (overlap.bitfield.class == ClassNone);
+      goto mismatch;
+    }
 
   if (given.bitfield.baseindex == overlap.bitfield.baseindex)
     return 1;
@@ -2934,7 +2977,7 @@ offset_in_range (offsetT val, int size)
     default: abort ();
     }
 
-  if ((val & ~mask) != 0 && (-val & ~mask) != 0)
+  if ((val & ~mask) != 0 && (-(addressT) val & ~mask) != 0)
     as_warn (_("0x%" PRIx64 " shortened to 0x%" PRIx64),
 	     (uint64_t) val, (uint64_t) (val & mask));
 
@@ -3577,14 +3620,14 @@ md_begin (void)
 		if (regtab->reg_type.bitfield.instance == Accum)
 		  reg_eax = regtab;
 	      }
-	    else if (regtab->reg_type.bitfield.tbyte)
-	      {
-		/* There's no point inserting st(<N>) in the hash table, as
-		   parentheses aren't included in register_chars[] anyway.  */
-		if (regtab->reg_type.bitfield.instance != Accum)
-		  continue;
-		reg_st0 = regtab;
-	      }
+	    break;
+
+	  case RegFP:
+	    /* There's no point inserting st(<N>) in the hash table, as
+	       parentheses aren't included in register_chars[] anyway.  */
+	    if (regtab->reg_type.bitfield.instance != Accum)
+	      continue;
+	    reg_st0 = regtab;
 	    break;
 
 	  case SReg:
@@ -3650,13 +3693,9 @@ md_begin (void)
 #if defined (OBJ_COFF) && defined (TE_PE)
       x86_dwarf2_return_column = 32;
 #else
-      x86_dwarf2_return_column = 16;
+      x86_dwarf2_return_column = REG_RA;
 #endif
       x86_cie_data_alignment = -8;
-#ifdef OBJ_ELF
-      x86_sframe_cfa_sp_reg = REG_SP;
-      x86_sframe_cfa_fp_reg = REG_FP;
-#endif
     }
   else
     {
@@ -3719,6 +3758,7 @@ pi (const char *line, i386_insn *x)
       pt (x->types[j]);
       fprintf (stdout, "\n");
       if (x->types[j].bitfield.class == Reg
+	  || x->types[j].bitfield.class == RegFP
 	  || x->types[j].bitfield.class == RegMMX
 	  || x->types[j].bitfield.class == RegSIMD
 	  || x->types[j].bitfield.class == RegMask
@@ -3827,7 +3867,7 @@ const type_names[] =
   { { .bitfield = { .class = RegCR } }, "control reg" },
   { { .bitfield = { .class = RegTR } }, "test reg" },
   { { .bitfield = { .class = RegDR } }, "debug reg" },
-  { { .bitfield = { .class = Reg, .tbyte = 1 } }, "FReg" },
+  { { .bitfield = { .class = RegFP, .tbyte = 1 } }, "FReg" },
   { { .bitfield = { .instance = Accum, .tbyte = 1 } }, "FAcc" },
   { { .bitfield = { .class = SReg } }, "SReg" },
   { { .bitfield = { .class = RegMMX } }, "rMMX" },
@@ -7090,12 +7130,14 @@ i386_assemble (char *line)
     swap_operands ();
 
   /* The order of the immediates should be reversed for 2-immediates EXTRQ
-     and INSERTQ instructions.  Also UWRMSR wants its immediate to be in the
-     "canonical" place (first), despite it appearing last (in AT&T syntax, or
-     because of the swapping above) in the incoming set of operands.  */
+     and INSERTQ instructions.  Also OUT, UWRMSR, and WRMSRNS want their
+     immediate to be in the "canonical" place (first), despite it appearing
+     last (in AT&T syntax, or because of the swapping above) in the incoming
+     set of operands.  */
   if ((i.imm_operands == 2
        && (t->mnem_off == MN_extrq || t->mnem_off == MN_insertq))
-      || ((t->mnem_off == MN_uwrmsr || t->mnem_off == MN_wrmsrns)
+      || ((t->mnem_off == MN_out || t->mnem_off == MN_uwrmsr
+	   || t->mnem_off == MN_wrmsrns)
 	  && i.imm_operands && i.operands > i.imm_operands))
       swap_2_operands (0, 1);
 
@@ -7110,11 +7152,8 @@ i386_assemble (char *line)
 	  || t->mnem_off == MN_rdmsr
 	  || t->mnem_off == MN_wrmsrns)
 	{
-	  for (j = 0; j < i.operands; j++)
-	    {
-	      if (operand_type_check(i.types[j], imm))
-		i.types[j] = smallest_imm_type (i.op[j].imms->X_add_number);
-	    }
+	  for (j = 0; j < i.imm_operands; j++)
+	    i.types[j] = smallest_imm_type (i.op[j].imms->X_add_number);
 	}
       else
 	optimize_imm ();
@@ -7454,6 +7493,8 @@ i386_assemble (char *line)
   /* Update operand types and check extended states.  */
   for (j = 0; j < i.operands; j++)
     {
+      enum operand_class class = i.types[j].bitfield.class;
+
       i.types[j] = operand_type_and (i.types[j], i.tm.operand_types[j]);
       switch (i.tm.operand_types[j].bitfield.class)
 	{
@@ -7477,6 +7518,9 @@ i386_assemble (char *line)
 	    i.xstate |= xstate_ymm;
 	  else if (i.tm.operand_types[j].bitfield.xmmword)
 	    i.xstate |= xstate_xmm;
+	  break;
+	case ClassNone:
+	  i.types[j].bitfield.class = class;
 	  break;
 	}
     }
@@ -8428,7 +8472,7 @@ optimize_disp (const insn_template *t)
       && (!t->opcode_modifier.jump
 	  || i.jumpabsolute || i.types[0].bitfield.baseindex))
     {
-      for (op = 0; op < i.operands; ++op)
+      for (op = i.imm_operands; op < i.operands; ++op)
 	{
 	  const expressionS *exp = i.op[op].disps;
 
@@ -8769,7 +8813,7 @@ check_VecOperands (const insn_template *t)
 	  unsigned int j;
 
 	  type.bitfield.baseindex = 1;
-	  for (j = 0; j < i.operands; ++j)
+	  for (j = i.imm_operands; j < i.operands; ++j)
 	    {
 	      if (j != op
 		  && !operand_type_register_match(i.types[j],
@@ -8785,7 +8829,7 @@ check_VecOperands (const insn_template *t)
   else if (t->opcode_modifier.broadcast && i.mem_operands)
     {
       /* Find memory operand.  */
-      for (op = 0; op < i.operands; op++)
+      for (op = i.imm_operands; op < i.operands; op++)
 	if (i.flags[op] & Operand_Mem)
 	  break;
       gas_assert (op < i.operands);
@@ -8894,7 +8938,7 @@ check_VecOperands (const insn_template *t)
 	  const i386_operand_type *type = NULL, *fallback = NULL;
 
 	  i.memshift = 0;
-	  for (op = 0; op < i.operands; op++)
+	  for (op = i.imm_operands; op < i.operands; op++)
 	    if (i.flags[op] & Operand_Mem)
 	      {
 		if (t->opcode_modifier.evex == EVEXLIG)
@@ -8936,7 +8980,7 @@ check_VecOperands (const insn_template *t)
 	    i.memshift = -1;
 	}
 
-      for (op = 0; op < i.operands; op++)
+      for (op = i.imm_operands; op < i.operands; op++)
 	if (operand_type_check (i.types[op], disp)
 	    && i.op[op].disps->X_op == O_constant)
 	  {
@@ -9030,7 +9074,7 @@ check_EgprOperands (const insn_template *t)
   if (!t->opcode_modifier.noegpr)
     return false;
 
-  for (unsigned int op = 0; op < i.operands; op++)
+  for (unsigned int op = i.imm_operands; op < i.operands; op++)
     {
       if (i.types[op].bitfield.class != Reg)
 	continue;
@@ -9092,7 +9136,7 @@ check_APX_operands (const insn_template *t)
 static bool
 check_Rex_required (void)
 {
-  for (unsigned int op = 0; op < i.operands; op++)
+  for (unsigned int op = i.imm_operands; op < i.operands; op++)
     {
       if (i.types[op].bitfield.class != Reg)
 	continue;
@@ -9364,7 +9408,10 @@ match_template (char mnem_suffix)
 	{
 	case 1:
 	  if (!operand_type_match (overlap0, i.types[0]))
-	    continue;
+	    {
+	      specific_error = progress (i.error);
+	      continue;
+	    }
 
 	  /* Allow the ModR/M encoding to be requested by using the {load} or
 	     {store} pseudo prefix on an applicable insn.  */
@@ -10402,7 +10449,7 @@ process_suffix (const insn_template *t)
 	  else
 	    need = flag_code == CODE_64BIT ? need_qword : need_word;
 
-	  for (op = 0; op < i.operands; op++)
+	  for (op = i.imm_operands; op < i.operands; op++)
 	    {
 	      if (i.types[op].bitfield.class != Reg)
 		continue;
@@ -10734,7 +10781,7 @@ process_operands (void)
      unnecessary segment overrides.  */
   const reg_entry *default_seg = NULL;
 
-  for (unsigned int j = 0; j < i.operands; j++)
+  for (unsigned int j = i.imm_operands; j < i.operands; j++)
     if (i.types[j].bitfield.instance != InstanceNone)
       i.reg_operands--;
 
@@ -10797,8 +10844,7 @@ process_operands (void)
 	     and 3 sources.  */
 	  for (j = i.operands; j > 0; j--)
 	    copy_operand (j, j - 1);
-	  i.op[0].regs
-	    = (const reg_entry *) str_hash_find (reg_hash, "xmm0");
+	  i.op[0].regs = str_hash_find (reg_hash, "xmm0");
 	  i.types[0] = regxmm;
 	  i.tm.operand_types[0] = regxmm;
 
@@ -11362,8 +11408,8 @@ build_modrm_byte (void)
 	      i.op[op].disps = exp;
 	      exp->X_op = O_constant;
 	      exp->X_add_number = 0;
-	      exp->X_add_symbol = (symbolS *) 0;
-	      exp->X_op_symbol = (symbolS *) 0;
+	      exp->X_add_symbol = NULL;
+	      exp->X_op_symbol = NULL;
 	    }
 	}
     else
@@ -11968,7 +12014,7 @@ x86_sframe_cfa_ra_offset (void)
   return (offsetT) -8;
 }
 
-/* The abi/arch indentifier for SFrame.  */
+/* The abi/arch identifier for SFrame.  */
 unsigned char
 x86_sframe_get_abi_arch (void)
 {
@@ -15065,9 +15111,8 @@ i386_index_check (const char *operand_string)
 	      || ((!i.mem_operands != !intel_syntax)
 		  && t->operand_types[1].bitfield.baseindex))
 	    op = 1;
-	  expected_reg
-	    = (const reg_entry *) str_hash_find (reg_hash,
-						 di_si[addr_mode][op == es_op]);
+	  expected_reg = str_hash_find (reg_hash,
+					di_si[addr_mode][op == es_op]);
 	}
       else
 	{
@@ -16394,7 +16439,7 @@ md_convert_frag (bfd *abfd ATTRIBUTE_UNUSED, segT sec ATTRIBUTE_UNUSED,
     }
   /* Now put displacement after opcode.  */
   md_number_to_chars ((char *) where_to_put_displacement,
-		      (valueT) (displacement_from_opcode_start - extension),
+		      displacement_from_opcode_start - extension,
 		      DISP_SIZE_FROM_RELAX_STATE (fragP->fr_subtype));
   fragP->fr_fix += extension;
 }
@@ -16780,16 +16825,16 @@ parse_real_register (const char *reg_string, char **end_op)
   while ((*p++ = register_chars[(unsigned char) *s]) != '\0')
     {
       if (p >= reg_name_given + MAX_REG_NAME_SIZE)
-	return (const reg_entry *) NULL;
+	return NULL;
       s++;
     }
 
   if (is_part_of_name (*s))
-    return (const reg_entry *) NULL;
+    return NULL;
 
   *end_op = (char *) s;
 
-  r = (const reg_entry *) str_hash_find (reg_hash, reg_name_given);
+  r = str_hash_find (reg_hash, reg_name_given);
 
   /* Handle floating point regs, allowing spaces in the (i) part.  */
   if (r == reg_st0)
@@ -16798,7 +16843,7 @@ parse_real_register (const char *reg_string, char **end_op)
 	  && !cpu_arch_flags.bitfield.cpu287
 	  && !cpu_arch_flags.bitfield.cpu387
 	  && !allow_pseudo_reg)
-	return (const reg_entry *) NULL;
+	return NULL;
 
       if (is_whitespace (*s))
 	++s;
@@ -16821,7 +16866,7 @@ parse_real_register (const char *reg_string, char **end_op)
 		}
 	    }
 	  /* We have "%st(" then garbage.  */
-	  return (const reg_entry *) NULL;
+	  return NULL;
 	}
     }
 
@@ -18081,7 +18126,7 @@ md_section_align (segT segment, valueT size)
      work.  */
   int align = bfd_section_alignment (segment);
 
-  return ((size + (1 << align) - 1) & (-((valueT) 1 << align)));
+  return (size + ((valueT) 1 << align) - 1) & -((valueT) 1 << align);
 }
 #endif
 
@@ -18103,7 +18148,7 @@ s_bss (int ignore ATTRIBUTE_UNUSED)
   int temp;
 
   temp = get_absolute_expression ();
-  subseg_set (bss_section, (subsegT) temp);
+  subseg_set (bss_section, temp);
   demand_empty_rest_of_line ();
 }
 
@@ -18283,7 +18328,7 @@ tc_gen_reloc (asection *section ATTRIBUTE_UNUSED, fixS *fixp)
 			  _("symbol size computation overflow"));
 	  fixp->fx_addsy = NULL;
 	  fixp->fx_subsy = NULL;
-	  md_apply_fix (fixp, (valueT *) &value, NULL);
+	  md_apply_fix (fixp, &value, NULL);
 	  return NULL;
 	}
       if (!fixp->fx_addsy || fixp->fx_subsy)

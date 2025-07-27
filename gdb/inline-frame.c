@@ -1,6 +1,6 @@
 /* Inline frame unwinder for GDB.
 
-   Copyright (C) 2008-2024 Free Software Foundation, Inc.
+   Copyright (C) 2008-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -615,9 +615,7 @@ maintenance_info_inline_frames (const char *arg, int from_tty)
 
 
 
-void _initialize_inline_frame ();
-void
-_initialize_inline_frame ()
+INIT_GDB_FILE (inline_frame)
 {
   add_cmd ("inline-frames", class_maintenance, maintenance_info_inline_frames,
 	   _("\

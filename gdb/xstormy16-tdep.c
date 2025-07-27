@@ -1,6 +1,6 @@
 /* Target-dependent code for the Sanyo Xstormy16a (LC590000) processor.
 
-   Copyright (C) 2001-2024 Free Software Foundation, Inc.
+   Copyright (C) 2001-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -435,7 +435,7 @@ xstormy16_skip_prologue (struct gdbarch *gdbarch, CORE_ADDR pc)
 	      return sal.end;
 	    }
 	}
-      /* No useable line symbol.  Use result of prologue parsing method.  */
+      /* No usable line symbol.  Use result of prologue parsing method.  */
       return plg_end;
     }
 
@@ -828,9 +828,7 @@ xstormy16_gdbarch_init (struct gdbarch_info info, struct gdbarch_list *arches)
    Initializer function for the Sanyo Xstormy16a module.
    Called by gdb at start-up.  */
 
-void _initialize_xstormy16_tdep ();
-void
-_initialize_xstormy16_tdep ()
+INIT_GDB_FILE (xstormy16_tdep)
 {
   gdbarch_register (bfd_arch_xstormy16, xstormy16_gdbarch_init);
 }

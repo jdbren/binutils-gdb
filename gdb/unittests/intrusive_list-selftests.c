@@ -1,5 +1,5 @@
 /* Tests for intrusive double linked list for GDB, the GNU debugger.
-   Copyright (C) 2021-2024 Free Software Foundation, Inc.
+   Copyright (C) 2021-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -1648,10 +1648,7 @@ test_intrusive_list ()
   test_node_is_linked ();
 }
 
-void _initialize_intrusive_list_selftests ();
-
-void
-_initialize_intrusive_list_selftests ()
+INIT_GDB_FILE (intrusive_list_selftests)
 {
   selftests::register_test ("intrusive_list", test_intrusive_list);
 }

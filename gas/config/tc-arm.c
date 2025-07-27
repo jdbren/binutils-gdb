@@ -1377,7 +1377,7 @@ arm_reg_parse_multi (char **ccp)
     p++;
   while (ISALPHA (*p) || ISDIGIT (*p) || *p == '_');
 
-  reg = (struct reg_entry *) str_hash_find_n (arm_reg_hsh, start, p - start);
+  reg = str_hash_find_n (arm_reg_hsh, start, p - start);
 
   if (!reg)
     return NULL;
@@ -2505,8 +2505,7 @@ parse_reloc (char **str)
   if (*q != ')')
     return -1;
 
-  if ((r = (struct reloc_entry *)
-       str_hash_find_n (arm_reloc_hsh, p, q - p)) == NULL)
+  if ((r = str_hash_find_n (arm_reloc_hsh, p, q - p)) == NULL)
     return -1;
 
   *str = q + 1;
@@ -2521,7 +2520,7 @@ insert_reg_alias (char *str, unsigned number, int type)
   struct reg_entry *new_reg;
   const char *name;
 
-  if ((new_reg = (struct reg_entry *) str_hash_find (arm_reg_hsh, str)) != 0)
+  if ((new_reg = str_hash_find (arm_reg_hsh, str)) != 0)
     {
       if (new_reg->builtin)
 	as_warn (_("ignoring attempt to redefine built-in register '%s'"), str);
@@ -2591,7 +2590,7 @@ create_register_alias (char * newname, char *p)
   if (*oldname == '\0')
     return false;
 
-  old = (struct reg_entry *) str_hash_find (arm_reg_hsh, oldname);
+  old = str_hash_find (arm_reg_hsh, oldname);
   if (!old)
     {
       as_warn (_("unknown register '%s' -- .req ignored"), oldname);
@@ -2838,8 +2837,7 @@ s_unreq (int a ATTRIBUTE_UNUSED)
     as_bad (_("invalid syntax for .unreq directive"));
   else
     {
-      struct reg_entry *reg
-	= (struct reg_entry *) str_hash_find (arm_reg_hsh, name);
+      struct reg_entry *reg = str_hash_find (arm_reg_hsh, name);
 
       if (!reg)
 	as_bad (_("unknown register alias '%s'"), name);
@@ -2863,7 +2861,7 @@ s_unreq (int a ATTRIBUTE_UNUSED)
 	  nbuf = strdup (name);
 	  for (p = nbuf; *p; p++)
 	    *p = TOUPPER (*p);
-	  reg = (struct reg_entry *) str_hash_find (arm_reg_hsh, nbuf);
+	  reg = str_hash_find (arm_reg_hsh, nbuf);
 	  if (reg)
 	    {
 	      str_hash_delete (arm_reg_hsh, nbuf);
@@ -2874,7 +2872,7 @@ s_unreq (int a ATTRIBUTE_UNUSED)
 
 	  for (p = nbuf; *p; p++)
 	    *p = TOLOWER (*p);
-	  reg = (struct reg_entry *) str_hash_find (arm_reg_hsh, nbuf);
+	  reg = str_hash_find (arm_reg_hsh, nbuf);
 	  if (reg)
 	    {
 	      str_hash_delete (arm_reg_hsh, nbuf);
@@ -3100,13 +3098,13 @@ find_real_start (symbolS * symbolP)
   if (S_IS_LOCAL (symbolP) || name[0] == '.')
     return symbolP;
 
-  real_start = concat (STUB_NAME, name, NULL);
+  real_start = concat (STUB_NAME, name, (const char *) NULL);
   new_target = symbol_find (real_start);
   free (real_start);
 
   if (new_target == NULL)
     {
-      as_warn (_("Failed to find real start of function: %s\n"), name);
+      as_warn (_("Failed to find real start of function: %s"), name);
       new_target = symbolP;
     }
 
@@ -3434,7 +3432,11 @@ s_ccs_def (int name)
   if (codecomposer_syntax)
     s_globl (name);
   else
+#ifdef OBJ_COFF
+    obj_coff_def (name);
+#else
     as_bad (_(".def pseudo-op only available with -mccs flag."));
+#endif
 }
 
 /* Directives: Literal pools.  */
@@ -3699,7 +3701,7 @@ symbol_locate (symbolS *    symbolP,
 
   name_length = strlen (name) + 1;   /* +1 for \0.  */
   obstack_grow (&notes, name, name_length);
-  preserved_copy_of_name = (char *) obstack_finish (&notes);
+  preserved_copy_of_name = obstack_finish (&notes);
 
 #ifdef tc_canonicalize_symbol_name
   preserved_copy_of_name =
@@ -3842,9 +3844,8 @@ s_arm_elf_cons (int nbytes)
 	    emit_expr (&exp, (unsigned int) nbytes);
 	  else
 	    {
-	      reloc_howto_type *howto = (reloc_howto_type *)
-		  bfd_reloc_type_lookup (stdoutput,
-					 (bfd_reloc_code_real_type) reloc);
+	      reloc_howto_type *howto = bfd_reloc_type_lookup (stdoutput,
+							       reloc);
 	      int size = bfd_get_reloc_size (howto);
 
 	      if (reloc == BFD_RELOC_ARM_PLT32)
@@ -4256,7 +4257,7 @@ s_arm_unwind_save_pseudo (int regno)
       add_unwind_opcode (op, 1);
       break;
     default:
-      as_bad (_("Unknown register no. encountered: %d\n"), regno);
+      as_bad (_("Unknown register no. encountered: %d"), regno);
     }
 }
 
@@ -5446,9 +5447,7 @@ parse_shift (char **str, int i, enum parse_shift_mode mode)
       return FAIL;
     }
 
-  shift_name
-    = (const struct asm_shift_name *) str_hash_find_n (arm_shift_hsh, *str,
-						       p - *str);
+  shift_name = str_hash_find_n (arm_shift_hsh, *str, p - *str);
 
   if (shift_name == NULL)
     {
@@ -6256,8 +6255,7 @@ parse_psr (char **str, bool lhs)
 	  || strncasecmp (start, "psr", 3) == 0)
 	p = start + strcspn (start, "rR") + 1;
 
-      psr = (const struct asm_psr *) str_hash_find_n (arm_v7m_psr_hsh, start,
-						      p - start);
+      psr = str_hash_find_n (arm_v7m_psr_hsh, start, p - start);
 
       if (!psr)
 	return FAIL;
@@ -6359,8 +6357,7 @@ parse_psr (char **str, bool lhs)
 	}
       else
 	{
-	  psr = (const struct asm_psr *) str_hash_find_n (arm_psr_hsh, start,
-							  p - start);
+	  psr = str_hash_find_n (arm_psr_hsh, start, p - start);
 	  if (!psr)
 	    goto error;
 
@@ -6557,7 +6554,7 @@ parse_cond (char **str)
       n++;
     }
 
-  c = (const struct asm_cond *) str_hash_find_n (arm_cond_hsh, cond, n);
+  c = str_hash_find_n (arm_cond_hsh, cond, n);
   if (!c)
     {
       inst.error = _("condition required");
@@ -6580,8 +6577,7 @@ parse_barrier (char **str)
   while (ISALPHA (*q))
     q++;
 
-  o = (const struct asm_barrier_opt *) str_hash_find_n (arm_barrier_opt_hsh, p,
-							q - p);
+  o = str_hash_find_n (arm_barrier_opt_hsh, p, q - p);
   if (!o)
     return FAIL;
 
@@ -15427,7 +15423,7 @@ do_vfp_nsyn_opcode (const char *opname)
 {
   const struct asm_opcode *opcode;
 
-  opcode = (const struct asm_opcode *) str_hash_find (arm_ops_hsh, opname);
+  opcode = str_hash_find (arm_ops_hsh, opname);
 
   if (!opcode)
     abort ();
@@ -22221,8 +22217,8 @@ fix_new_arm (fragS *	   frag,
       break;
 
     default:
-      new_fix = (fixS *) fix_new (frag, where, size, make_expr_symbol (exp), 0,
-				  pc_rel, (enum bfd_reloc_code_real) reloc);
+      new_fix = fix_new (frag, where, size, make_expr_symbol (exp), 0,
+			 pc_rel, reloc);
       break;
     }
 
@@ -22481,8 +22477,7 @@ opcode_lookup (char **str)
     *str = end;
 
   /* Look for unaffixed or special-case affixed mnemonic.  */
-  opcode = (const struct asm_opcode *) str_hash_find_n (arm_ops_hsh, base,
-							end - base);
+  opcode = str_hash_find_n (arm_ops_hsh, base, end - base);
   cond = NULL;
   if (opcode)
     {
@@ -22496,7 +22491,7 @@ opcode_lookup (char **str)
       if (warn_on_deprecated && unified_syntax)
 	as_tsktsk (_("conditional infixes are deprecated in unified syntax"));
       affix = base + (opcode->tag - OT_odd_infix_0);
-      cond = (const struct asm_cond *) str_hash_find_n (arm_cond_hsh, affix, 2);
+      cond = str_hash_find_n (arm_cond_hsh, affix, 2);
       gas_assert (cond);
 
       inst.cond = cond->value;
@@ -22509,9 +22504,8 @@ opcode_lookup (char **str)
     if (end - base < 2)
       return NULL;
      affix = end - 1;
-     cond = (const struct asm_cond *) str_hash_find_n (arm_vcond_hsh, affix, 1);
-     opcode = (const struct asm_opcode *) str_hash_find_n (arm_ops_hsh, base,
-							   affix - base);
+     cond = str_hash_find_n (arm_vcond_hsh, affix, 1);
+     opcode = str_hash_find_n (arm_ops_hsh, base, affix - base);
 
      /* A known edge case is a conflict between an 'e' as a suffix for an
 	Else of a VPT predication block and an 'ne' suffix for an IT block.
@@ -22543,9 +22537,8 @@ opcode_lookup (char **str)
 
       /* Look for suffixed mnemonic.  */
       affix = end - 2;
-      cond = (const struct asm_cond *) str_hash_find_n (arm_cond_hsh, affix, 2);
-      opcode = (const struct asm_opcode *) str_hash_find_n (arm_ops_hsh, base,
-							    affix - base);
+      cond = str_hash_find_n (arm_cond_hsh, affix, 2);
+      opcode = str_hash_find_n (arm_ops_hsh, base, affix - base);
     }
 
   if (opcode && cond)
@@ -22594,14 +22587,13 @@ opcode_lookup (char **str)
 
   /* Look for infixed mnemonic in the usual position.  */
   affix = base + 3;
-  cond = (const struct asm_cond *) str_hash_find_n (arm_cond_hsh, affix, 2);
+  cond = str_hash_find_n (arm_cond_hsh, affix, 2);
   if (!cond)
     return NULL;
 
   memcpy (save, affix, 2);
   memmove (affix, affix + 2, (end - affix) - 2);
-  opcode = (const struct asm_opcode *) str_hash_find_n (arm_ops_hsh, base,
-							(end - base) - 2);
+  opcode = str_hash_find_n (arm_ops_hsh, base, (end - base) - 2);
   memmove (affix + 2, affix, (end - affix) - 2);
   memcpy (affix, save, 2);
 
@@ -26046,14 +26038,13 @@ static valueT
 md_chars_to_number (char * buf, int n)
 {
   valueT result = 0;
-  unsigned char * where = (unsigned char *) buf;
 
   if (target_big_endian)
     {
       while (n--)
 	{
 	  result <<= 8;
-	  result |= (*where++ & 255);
+	  result |= (*buf++ & 255);
 	}
     }
   else
@@ -26061,7 +26052,7 @@ md_chars_to_number (char * buf, int n)
       while (n--)
 	{
 	  result <<= 8;
-	  result |= (where[n] & 255);
+	  result |= (buf[n] & 255);
 	}
     }
 
@@ -26598,10 +26589,6 @@ arm_handle_align (fragS * fragP)
 
   bytes = fragP->fr_next->fr_address - fragP->fr_address - fragP->fr_fix;
   p = fragP->fr_literal + fragP->fr_fix;
-  fix = 0;
-
-  if (bytes > MAX_MEM_FOR_RS_ALIGN_CODE)
-    bytes &= MAX_MEM_FOR_RS_ALIGN_CODE;
 
   gas_assert ((fragP->tc_frag_data.thumb_mode & MODE_RECORDED) != 0);
 
@@ -26632,11 +26619,9 @@ arm_handle_align (fragS * fragP)
 #endif
     }
 
-  fragP->fr_var = noop_size;
-
-  if (bytes & (noop_size - 1))
+  fix = bytes & (noop_size - 1);
+  if (fix != 0)
     {
-      fix = bytes & (noop_size - 1);
 #ifdef OBJ_ELF
       insert_data_mapping_symbol (state, fragP->fr_fix, fragP, fix);
 #endif
@@ -26660,45 +26645,12 @@ arm_handle_align (fragS * fragP)
       noop_size = 4;
     }
 
-  while (bytes >= noop_size)
-    {
-      memcpy (p, noop, noop_size);
-      p += noop_size;
-      bytes -= noop_size;
-      fix += noop_size;
-    }
-
   fragP->fr_fix += fix;
-}
-
-/* Called from md_do_align.  Used to create an alignment
-   frag in a code section.  */
-
-void
-arm_frag_align_code (int n, int max)
-{
-  char * p;
-
-  /* We assume that there will never be a requirement
-     to support alignments greater than MAX_MEM_FOR_RS_ALIGN_CODE bytes.  */
-  if (max > MAX_MEM_FOR_RS_ALIGN_CODE)
+  if (bytes != 0)
     {
-      char err_msg[128];
-
-      sprintf (err_msg,
-	_("alignments greater than %d bytes not supported in .text sections."),
-	MAX_MEM_FOR_RS_ALIGN_CODE + 1);
-      as_fatal ("%s", err_msg);
+      fragP->fr_var = noop_size;
+      memcpy (p, noop, noop_size);
     }
-
-  p = frag_var (rs_align_code,
-		MAX_MEM_FOR_RS_ALIGN_CODE,
-		1,
-		(relax_substateT) max,
-		(symbolS *) NULL,
-		(offsetT) n,
-		(char *) NULL);
-  *p = 0;
 }
 
 /* Perform target specific initialisation of a frag.
@@ -29849,10 +29801,6 @@ elf32_arm_target_format (void)
   return (target_big_endian
 	  ? "elf32-bigarm-vxworks"
 	  : "elf32-littlearm-vxworks");
-#elif defined (TE_NACL)
-  return (target_big_endian
-	  ? "elf32-bigarm-nacl"
-	  : "elf32-littlearm-nacl");
 #else
   if (arm_fdpic)
     {
@@ -30043,7 +29991,7 @@ arm_adjust_symtab (void)
     }
 
   /* Remove any overlapping mapping symbols generated by alignment frags.  */
-  bfd_map_over_sections (stdoutput, check_mapping_symbols, (char *) 0);
+  bfd_map_over_sections (stdoutput, check_mapping_symbols, NULL);
   /* Now do generic ELF adjustments.  */
   elf_adjust_symtab ();
 #endif
@@ -31855,7 +31803,7 @@ arm_parse_arch (const char *str)
 	return true;
       }
 
-  as_bad (_("unknown architecture `%s'\n"), str);
+  as_bad (_("unknown architecture `%s'"), str);
   return false;
 }
 
@@ -31871,7 +31819,7 @@ arm_parse_fpu (const char * str)
 	return true;
       }
 
-  as_bad (_("unknown floating point format `%s'\n"), str);
+  as_bad (_("unknown floating point format `%s'"), str);
   return false;
 }
 
@@ -31887,7 +31835,7 @@ arm_parse_float_abi (const char * str)
 	return true;
       }
 
-  as_bad (_("unknown floating point abi `%s'\n"), str);
+  as_bad (_("unknown floating point abi `%s'"), str);
   return false;
 }
 
@@ -31903,7 +31851,7 @@ arm_parse_eabi (const char * str)
 	meabi_flags = opt->value;
 	return true;
       }
-  as_bad (_("unknown EABI `%s'\n"), str);
+  as_bad (_("unknown EABI `%s'"), str);
   return false;
 }
 #endif
@@ -32415,7 +32363,7 @@ aeabi_set_public_attributes (void)
   if (arch == -1)
     arch = get_aeabi_cpu_arch_from_fset (&flags_arch, &flags_ext, &profile, 0);
   if (arch == -1)
-    as_bad (_("no architecture contains all the instructions used\n"));
+    as_bad (_("no architecture contains all the instructions used"));
 
   /* Tag_CPU_name.  */
   if (selected_cpu_name[0])
@@ -32675,7 +32623,7 @@ s_arm_arch (int ignored ATTRIBUTE_UNUSED)
 	return;
       }
 
-  as_bad (_("unknown architecture `%s'\n"), name);
+  as_bad (_("unknown architecture `%s'"), name);
   *input_line_pointer = saved_char;
   ignore_rest_of_line ();
 }
@@ -32711,7 +32659,7 @@ s_arm_object_arch (int ignored ATTRIBUTE_UNUSED)
 	return;
       }
 
-  as_bad (_("unknown architecture `%s'\n"), name);
+  as_bad (_("unknown architecture `%s'"), name);
   *input_line_pointer = saved_char;
   ignore_rest_of_line ();
 }
@@ -32790,8 +32738,12 @@ s_arm_arch_extension (int ignored ATTRIBUTE_UNUSED)
 
 	if (i == nb_allowed_archs)
 	  {
-	    as_bad (_("architectural extension `%s' is not allowed for the "
-		      "current base architecture"), name);
+	    if (adding_value)
+	      as_bad (_("architectural extension `%s' is not allowed for the "
+			"current base architecture"), name);
+	    else
+	      as_tsktsk (_("disabling feature `%s' has no effect on the "
+			   "current base architecture"), name);
 	    break;
 	  }
 
@@ -32813,7 +32765,7 @@ s_arm_arch_extension (int ignored ATTRIBUTE_UNUSED)
       }
 
   if (opt->name == NULL)
-    as_bad (_("unknown architecture extension `%s'\n"), name);
+    as_bad (_("unknown architecture extension `%s'"), name);
 
   *input_line_pointer = saved_char;
 }
@@ -32854,7 +32806,7 @@ s_arm_fpu (int ignored ATTRIBUTE_UNUSED)
 	return;
       }
 
-  as_bad (_("unknown floating point format `%s'\n"), name);
+  as_bad (_("unknown floating point format `%s'"), name);
   *input_line_pointer = saved_char;
   ignore_rest_of_line ();
 }

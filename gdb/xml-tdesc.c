@@ -1,6 +1,6 @@
 /* XML target description support for GDB.
 
-   Copyright (C) 2006-2024 Free Software Foundation, Inc.
+   Copyright (C) 2006-2025 Free Software Foundation, Inc.
 
    Contributed by CodeSourcery.
 
@@ -670,7 +670,7 @@ file_read_description_xml (const char *filename)
       return NULL;
     }
 
-  const std::string dirname = ldirname (filename);
+  const std::string dirname = gdb_ldirname (filename);
   auto fetch_another = [&dirname] (const char *name)
     {
       return xml_fetch_content_from_file (name, dirname.c_str ());

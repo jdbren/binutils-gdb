@@ -1,6 +1,6 @@
 /* Reading code for .gdb_index
 
-   Copyright (C) 2023-2024 Free Software Foundation, Inc.
+   Copyright (C) 2023-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -1113,7 +1113,7 @@ dw2_expand_marked_cus (dwarf2_per_objfile *per_objfile, offset_type idx,
 	  continue;
 	}
 
-      dwarf2_per_cu *per_cu = per_objfile->per_bfd->get_cu (cu_index);
+      dwarf2_per_cu *per_cu = per_objfile->per_bfd->get_unit (cu_index);
 
       if (!dw2_expand_symtabs_matching_one (per_cu, per_objfile, file_matcher,
 					    expansion_notify, lang_matcher))
@@ -1426,7 +1426,7 @@ create_addrmap_from_gdb_index (dwarf2_per_objfile *per_objfile,
 	  continue;
 	}
 
-      mutable_map.set_empty (lo, hi - 1, per_bfd->get_cu (cu_index));
+      mutable_map.set_empty (lo, hi - 1, per_bfd->get_unit (cu_index));
     }
 
   index->index_addrmap
@@ -1562,10 +1562,7 @@ dwarf2_read_gdb_index
   return true;
 }
 
-void _initialize_read_gdb_index ();
-
-void
-_initialize_read_gdb_index ()
+INIT_GDB_FILE (read_gdb_index)
 {
   add_setshow_boolean_cmd ("use-deprecated-index-sections",
 			   no_class, &use_deprecated_index_sections, _("\

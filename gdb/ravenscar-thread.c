@@ -1,6 +1,6 @@
 /* Ada Ravenscar thread support.
 
-   Copyright (C) 2004-2024 Free Software Foundation, Inc.
+   Copyright (C) 2004-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -503,7 +503,7 @@ ravenscar_thread_target::pid_to_str (ptid_t ptid)
     return beneath ()->pid_to_str (ptid);
 
   return string_printf ("Ravenscar Thread 0x%s",
-			phex_nz (ptid.tid (), sizeof (ULONGEST)));
+			phex_nz (ptid.tid ()));
 }
 
 CORE_ADDR
@@ -921,9 +921,7 @@ Support for Ravenscar task/thread switching is disabled\n"));
 /* Module startup initialization function, automagically called by
    init.c.  */
 
-void _initialize_ravenscar ();
-void
-_initialize_ravenscar ()
+INIT_GDB_FILE (ravenscar)
 {
   /* Notice when the inferior is created in order to push the
      ravenscar ops if needed.  */

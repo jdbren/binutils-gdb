@@ -879,7 +879,7 @@ symbol is defined anywhere, the common symbols are treated as undefined
 references.
 @ifclear man
 For more details on common symbols, see the discussion of
---warn-common in @ref{Options,,Linker options,ld.info,The GNU linker}.
+--warn-common in @ref{Options,,Linker options,ld,The GNU linker}.
 @end ifclear
 The lower case @var{c} character is used when the symbol is in a
 special section for small commons.
@@ -1362,7 +1362,7 @@ between any two formats may not work as expected.
 deletes them afterward.  @command{objcopy} uses @sc{bfd} to do all its
 translation work; it has access to all the formats described in @sc{bfd}
 and thus is able to recognize most formats without being told
-explicitly.  @xref{BFD,,BFD,ld.info,Using LD}.
+explicitly.  @xref{BFD,,BFD,ld,Using LD}.
 
 @command{objcopy} can be used to generate S-records by using an output
 target of @samp{srec} (e.g., use @samp{-O srec}).
@@ -2146,9 +2146,6 @@ Sets the section alignment field in the PE header - if one is present
 in the binary.  Sections in memory will always begin at addresses
 which are a multiple of this number.  Defaults to 0x1000.
 
-Note - this option will also set the alignment field in each section's
-flags.
-
 Note - if a section's LMA or VMA addresses are no longer aligned, and
 those addresses have not been set via the @option{--set-section-lma} or
 @option{--set-section-vma} options, and the file has been fully
@@ -2704,6 +2701,14 @@ but the result again may not be as you expect.
 For RISC-V, the following options are supported:
 
 @table @code
+@item max
+Disassemble without checking architecture string. This is a best effort mode, so
+for overlapping ISA extensions the first match (possibly incorrect in a given
+context) will be used to decode the instruction. It's useful, if the ELF file
+doesn't expose ISA string, preventing automatic ISA subset deduction, and the
+default fallback ISA string (@code{rv64gc}) doesn't cover all instructions in
+the binary.
+
 @item numeric
 Print numeric register names, rather than ABI names (e.g., print @code{x2}
 instead of @code{sp}).
@@ -2715,7 +2720,7 @@ instructions will be represented as such (@code{addi sp,sp,-128} will be
 
 @item priv-spec=@var{SPEC}
 Print the CSR according to the chosen privilege spec version (e.g.,
-@code{1.10}, @code{1.11}, @code{1.12}).
+@code{1.10}, @code{1.11}, @code{1.12}, @code{1.13}).
 @end table
 
 For MIPS, this option controls the printing of instruction mnemonic
@@ -3561,6 +3566,7 @@ strip [@option{-F} @var{bfdname} |@option{--target=}@var{bfdname}]
       [@option{--keep-section-symbols}]
       [@option{--keep-file-symbols}]
       [@option{--only-keep-debug}]
+      [@option{--plugin} @var{name}]
       [@option{-v} |@option{--verbose}] [@option{-V}|@option{--version}]
       [@option{--help}] [@option{--info}]
       @var{objfile}@dots{}
@@ -3819,6 +3825,26 @@ information may be incomplete.  Besides the gnu_debuglink feature
 currently only supports the presence of one filename containing
 debugging information, not multiple filenames on a one-per-object-file
 basis.
+
+@item --plugin @var{name}
+@cindex plugins
+Load the plugin called @var{name} to add support for extra target
+types.  This option is only available if the toolchain has been built
+with plugin support enabled.
+
+If @option{--plugin} is not provided, but plugin support has been
+enabled then @command{strip} iterates over the files in
+@file{$@{libdir@}/bfd-plugins} in alphabetic order and the first
+plugin that claims the object in question is used.
+
+Please note that this plugin search directory is @emph{not} the one
+used by @command{ld}'s @option{-plugin} option.  In order to make
+@command{strip} use the  linker plugin it must be copied into the
+@file{$@{libdir@}/bfd-plugins} directory.  For GCC based compilations
+the linker plugin is called @file{liblto_plugin.so.0.0.0}.  For Clang
+based compilations it is called @file{LLVMgold.so}.  The GCC plugin
+is always backwards compatible with earlier versions, so it is
+sufficient to just copy the newest one.
 
 @item -V
 @itemx --version

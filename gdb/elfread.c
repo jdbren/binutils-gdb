@@ -1,6 +1,6 @@
 /* Read ELF (Executable and Linking Format) object files for GDB.
 
-   Copyright (C) 1991-2024 Free Software Foundation, Inc.
+   Copyright (C) 1991-2025 Free Software Foundation, Inc.
 
    Written by Fred Fish at Cygnus Support.
 
@@ -898,7 +898,7 @@ elf_gnu_ifunc_resolve_name (const char *name, CORE_ADDR *addr_p)
   return false;
 }
 
-/* Call STT_GNU_IFUNC - a function returning addresss of a real function to
+/* Call STT_GNU_IFUNC - a function returning address of a real function to
    call.  PC is theSTT_GNU_IFUNC resolving function entry.  The value returned
    is the entry point of the resolved STT_GNU_IFUNC target function to call.
    */
@@ -1513,9 +1513,7 @@ static const struct gnu_ifunc_fns elf_gnu_ifunc_fns =
   elf_gnu_ifunc_resolver_return_stop
 };
 
-void _initialize_elfread ();
-void
-_initialize_elfread ()
+INIT_GDB_FILE (elfread)
 {
   add_symtab_fns (bfd_target_elf_flavour, &elf_sym_fns);
 

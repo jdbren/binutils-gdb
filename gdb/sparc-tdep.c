@@ -1,6 +1,6 @@
 /* Target-dependent code for SPARC.
 
-   Copyright (C) 2003-2024 Free Software Foundation, Inc.
+   Copyright (C) 2003-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -2264,9 +2264,7 @@ const struct sparc_fpregmap sparc32_bsd_fpregmap =
   32 * 4,			/* %fsr */
 };
 
-void _initialize_sparc_tdep ();
-void
-_initialize_sparc_tdep ()
+INIT_GDB_FILE (sparc_tdep)
 {
   gdbarch_register (bfd_arch_sparc, sparc32_gdbarch_init);
 }

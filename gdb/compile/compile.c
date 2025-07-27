@@ -1,6 +1,6 @@
 /* General Compile and inject code
 
-   Copyright (C) 2014-2024 Free Software Foundation, Inc.
+   Copyright (C) 2014-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -868,9 +868,7 @@ compile_command (const char *args, int from_tty)
 /* See compile.h.  */
 cmd_list_element *compile_cmd_element = nullptr;
 
-void _initialize_compile ();
-void
-_initialize_compile ()
+INIT_GDB_FILE (compile)
 {
   compile_cmd_element = add_prefix_cmd ("compile", class_obscure,
 					compile_command,

@@ -1,6 +1,6 @@
 /* Symbol table definitions for GDB.
 
-   Copyright (C) 1986-2024 Free Software Foundation, Inc.
+   Copyright (C) 1986-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -2101,17 +2101,17 @@ struct field_of_this_result
      symbol was not found in 'this'.  If non-NULL, then one of the
      other fields will be non-NULL as well.  */
 
-  struct type *type;
+  struct type *type = nullptr;
 
   /* If the symbol was found as an ordinary field of 'this', then this
      is non-NULL and points to the particular field.  */
 
-  struct field *field;
+  struct field *field = nullptr;
 
   /* If the symbol was found as a function field of 'this', then this
      is non-NULL and points to the particular field.  */
 
-  struct fn_fieldlist *fn_field;
+  struct fn_fieldlist *fn_field = nullptr;
 };
 
 /* Find the definition for a specified symbol name NAME
@@ -2482,8 +2482,7 @@ extern void collect_file_symbol_completion_matches
    symbol_name_match_type name_match_type,
    const char *, const char *, const char *);
 
-extern completion_list
-  make_source_files_completion_list (const char *, const char *);
+extern completion_list make_source_files_completion_list (const char *);
 
 /* Return whether SYM is a function/method, as opposed to a data symbol.  */
 

@@ -1,6 +1,6 @@
 /* General python/gdb code
 
-   Copyright (C) 2008-2024 Free Software Foundation, Inc.
+   Copyright (C) 2008-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -128,7 +128,8 @@ static bool gdbpy_check_quit_flag (const struct extension_language_defn *);
 static enum ext_lang_rc gdbpy_before_prompt_hook
   (const struct extension_language_defn *, const char *current_gdb_prompt);
 static std::optional<std::string> gdbpy_colorize
-  (const std::string &filename, const std::string &contents);
+  (const std::string &filename, const std::string &contents,
+   enum language lang);
 static std::optional<std::string> gdbpy_colorize_disasm
 (const std::string &content, gdbarch *gdbarch);
 static ext_lang_missing_file_result gdbpy_handle_missing_debuginfo
@@ -1295,7 +1296,8 @@ gdbpy_before_prompt_hook (const struct extension_language_defn *extlang,
 /* This is the extension_language_ops.colorize "method".  */
 
 static std::optional<std::string>
-gdbpy_colorize (const std::string &filename, const std::string &contents)
+gdbpy_colorize (const std::string &filename, const std::string &contents,
+		enum language lang)
 {
   if (!gdb_python_initialized)
     return {};
@@ -1329,6 +1331,13 @@ gdbpy_colorize (const std::string &filename, const std::string &contents)
       return {};
     }
 
+  gdbpy_ref<> lang_arg (PyUnicode_FromString (language_str (lang)));
+  if (lang_arg == nullptr)
+    {
+      gdbpy_print_stack ();
+      return {};
+    }
+
   /* The pygments library, which is what we currently use for applying
      styling, is happy to take input as a bytes object, and to figure out
      the encoding for itself.  This removes the need for us to figure out
@@ -1349,6 +1358,7 @@ gdbpy_colorize (const std::string &filename, const std::string &contents)
   gdbpy_ref<> result (PyObject_CallFunctionObjArgs (hook.get (),
 						    fname_arg.get (),
 						    contents_arg.get (),
+						    lang_arg.get (),
 						    nullptr));
   if (result == nullptr)
     {
@@ -1602,16 +1612,53 @@ gdbpy_flush (PyObject *self, PyObject *args, PyObject *kw)
     {
     case 1:
       {
-	gdb_flush (gdb_stderr);
+	if (gdb_stderr != nullptr)
+	  gdb_flush (gdb_stderr);
 	break;
       }
     case 2:
       {
-	gdb_flush (gdb_stdlog);
+	if (gdb_stdlog != nullptr)
+	  gdb_flush (gdb_stdlog);
 	break;
       }
     default:
-      gdb_flush (gdb_stdout);
+      if (gdb_stdout != nullptr)
+	gdb_flush (gdb_stdout);
+    }
+
+  Py_RETURN_NONE;
+}
+
+/* Implement gdb.warning().  Takes a single text string argument and emit a
+   warning using GDB's 'warning' function.  The input text string must not
+   be empty.  */
+
+static PyObject *
+gdbpy_warning (PyObject *self, PyObject *args, PyObject *kw)
+{
+  const char *text;
+  static const char *keywords[] = { "text", nullptr };
+
+  if (!gdb_PyArg_ParseTupleAndKeywords (args, kw, "s", keywords, &text))
+    return nullptr;
+
+  if (strlen (text) == 0)
+    {
+      PyErr_SetString (PyExc_ValueError,
+		       _("Empty text string passed to gdb.warning"));
+      return nullptr;
+    }
+
+  try
+    {
+      warning ("%s", text);
+    }
+  catch (const gdb_exception &ex)
+    {
+      /* The warning() call probably cannot throw an exception.  But just
+	 in case it ever does.  */
+      return gdbpy_handle_gdb_exception (nullptr, ex);
     }
 
   Py_RETURN_NONE;
@@ -2433,7 +2480,7 @@ py_initialize ()
      /foo/lib/pythonX.Y/...
      This must be done before calling Py_Initialize.  */
   gdb::unique_xmalloc_ptr<char> progname
-    (concat (ldirname (python_libdir.c_str ()).c_str (), SLASH_STRING, "bin",
+    (concat (gdb_ldirname (python_libdir.c_str ()).c_str (), SLASH_STRING, "bin",
 	      SLASH_STRING, "python", (char *) NULL));
 
   {
@@ -2670,9 +2717,7 @@ test_python ()
 /* See python.h.  */
 cmd_list_element *python_cmd_element = nullptr;
 
-void _initialize_python ();
-void
-_initialize_python ()
+INIT_GDB_FILE (python)
 {
   cmd_list_element *python_interactive_cmd
     =	add_com ("python-interactive", class_obscure,
@@ -3111,6 +3156,12 @@ Return the current print options." },
     METH_VARARGS | METH_KEYWORDS,
     "notify_mi (name, data) -> None\n\
 Output async record to MI channels if any." },
+
+  { "warning", (PyCFunction) gdbpy_warning,
+    METH_VARARGS | METH_KEYWORDS,
+    "warning (text) -> None\n\
+Print a warning." },
+
   {NULL, NULL, 0, NULL}
 };
 

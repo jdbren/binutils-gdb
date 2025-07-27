@@ -69,7 +69,7 @@ struct riscv_private_data
   const char (*riscv_fpr_names)[NRC];
   /* If set, disassemble as most general instruction.  */
   bool no_aliases;
-  /* If set, disassemble without checking architectire string, just like what
+  /* If set, disassemble without checking architecture string, just like what
      we did at the beginning.  */
   bool all_ext;
 };
@@ -83,6 +83,7 @@ set_default_riscv_dis_options (struct disassemble_info *info)
   pd->riscv_gpr_names = riscv_gpr_names_abi;
   pd->riscv_fpr_names = riscv_fpr_names_abi;
   pd->no_aliases = false;
+  pd->all_ext = false;
 }
 
 /* Parse RISC-V disassembler option (without arguments).  */
@@ -344,7 +345,7 @@ print_insn_args (const char *oparg, insn_t l, bfd_vma pc, disassemble_info *info
 	    case 'j':
 	      if (((l & MASK_C_ADDI) == MATCH_C_ADDI) && rd != 0)
 		maybe_print_address (pd, rd, EXTRACT_CITYPE_IMM (l), 0);
-	      if (info->mach == bfd_mach_riscv64
+	      if (pd->xlen == 64
 		  && ((l & MASK_C_ADDIW) == MATCH_C_ADDIW) && rd != 0)
 		maybe_print_address (pd, rd, EXTRACT_CITYPE_IMM (l), 1);
 	      print (info->stream, dis_style_immediate, "%d",
@@ -512,6 +513,11 @@ print_insn_args (const char *oparg, insn_t l, bfd_vma pc, disassemble_info *info
 	    print (info->stream, dis_style_immediate, "0");
 	  break;
 
+	case 'r':
+	  print (info->stream, dis_style_register, "%s",
+		 pd->riscv_gpr_names[EXTRACT_OPERAND (RS3, l)]);
+	  break;
+
 	case 's':
 	  if ((l & MASK_JALR) == MATCH_JALR)
 	    maybe_print_address (pd, rs1, EXTRACT_ITYPE_IMM (l), 0);
@@ -551,7 +557,7 @@ print_insn_args (const char *oparg, insn_t l, bfd_vma pc, disassemble_info *info
 	  if (((l & MASK_ADDI) == MATCH_ADDI && rs1 != 0)
 	      || (l & MASK_JALR) == MATCH_JALR)
 	    maybe_print_address (pd, rs1, EXTRACT_ITYPE_IMM (l), 0);
-	  if (info->mach == bfd_mach_riscv64
+	  if (pd->xlen == 64
 	      && ((l & MASK_ADDIW) == MATCH_ADDIW) && rs1 != 0)
 	    maybe_print_address (pd, rs1, EXTRACT_ITYPE_IMM (l), 1);
 	  print (info->stream, dis_style_immediate, "%d",
@@ -880,6 +886,37 @@ print_insn_args (const char *oparg, insn_t l, bfd_vma pc, disassemble_info *info
 		  break;
 		}
 	      break;
+	    case 'm': /* Vendor-specific (MIPS) operands.  */
+	      switch (*++oparg)
+		{
+		case '@':
+		  print (info->stream, dis_style_register, "0x%x",
+			 (unsigned) EXTRACT_OPERAND (MIPS_HINT, l));
+		  break;
+		case '#':
+		  print (info->stream, dis_style_register, "0x%x",
+			 (unsigned) EXTRACT_OPERAND (MIPS_IMM9, l));
+		  break;
+		case '$':
+		  print (info->stream, dis_style_immediate, "%d",
+			 (unsigned)EXTRACT_MIPS_LDP_IMM (l));
+		  break;
+		case '%':
+		  print (info->stream, dis_style_immediate, "%d",
+			 (unsigned)EXTRACT_MIPS_LWP_IMM (l));
+		  break;
+		case '^':
+		  print (info->stream, dis_style_immediate, "%d",
+			 (unsigned)EXTRACT_MIPS_SDP_IMM (l));
+		  break;
+		case '&':
+		  print (info->stream, dis_style_immediate, "%d",
+			 (unsigned)EXTRACT_MIPS_SWP_IMM (l));
+		  break;
+		default:
+		  goto undefined_modifier;
+		}
+	      break;
 	    default:
 	      goto undefined_modifier;
 	    }
@@ -946,7 +983,9 @@ riscv_disassemble_insn (bfd_vma memaddr,
   if (op != NULL)
     {
       /* If XLEN is not known, get its value from the ELF class.  */
-      if (info->mach == bfd_mach_riscv64)
+      if (pd->xlen != 0)
+	;
+      else if (info->mach == bfd_mach_riscv64)
 	pd->xlen = 64;
       else if (info->mach == bfd_mach_riscv32)
 	pd->xlen = 32;
@@ -1580,6 +1619,9 @@ static struct
   riscv_option_arg_t arg;
 } riscv_options[] =
 {
+  { "max",
+    N_("Disassemble without checking architecture string."),
+    RISCV_OPTION_ARG_NONE },
   { "numeric",
     N_("Print numeric register names, rather than ABI names."),
     RISCV_OPTION_ARG_NONE },

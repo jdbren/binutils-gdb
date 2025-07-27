@@ -1,6 +1,6 @@
 /* Cache and manage the values of registers for GDB, the GNU debugger.
 
-   Copyright (C) 1986-2024 Free Software Foundation, Inc.
+   Copyright (C) 1986-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -2213,9 +2213,7 @@ regcache_thread_ptid_changed ()
 } /* namespace selftests */
 #endif /* GDB_SELF_TEST */
 
-void _initialize_regcache ();
-void
-_initialize_regcache ()
+INIT_GDB_FILE (regcache)
 {
   struct cmd_list_element *c;
 

@@ -1,5 +1,5 @@
 /* debuginfod utilities for GDB.
-   Copyright (C) 2020-2024 Free Software Foundation, Inc.
+   Copyright (C) 2020-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -594,9 +594,7 @@ maint_get_debuginfod_download_sections ()
 
 /* Register debuginfod commands.  */
 
-void _initialize_debuginfod ();
-void
-_initialize_debuginfod ()
+INIT_GDB_FILE (debuginfod)
 {
   /* set/show debuginfod */
   add_setshow_prefix_cmd ("debuginfod", class_run,

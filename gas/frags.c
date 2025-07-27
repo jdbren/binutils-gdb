@@ -81,7 +81,7 @@ frag_alloc (struct obstack *ob, size_t extra)
   (void) obstack_alloc (ob, 0);
   oalign = obstack_alignment_mask (ob);
   obstack_alignment_mask (ob) = 0;
-  ptr = (fragS *) obstack_alloc (ob, extra + SIZEOF_STRUCT_FRAG);
+  ptr = obstack_alloc (ob, extra + SIZEOF_STRUCT_FRAG);
   obstack_alignment_mask (ob) = oalign;
   memset (ptr, 0, SIZEOF_STRUCT_FRAG);
   totalfrags++;
@@ -325,8 +325,7 @@ frag_align (int alignment, int fill_character, int max)
     {
       char *p;
 
-      p = frag_var (rs_align, 1, 1, (relax_substateT) max,
-		    (symbolS *) 0, (offsetT) alignment, (char *) 0);
+      p = frag_var (rs_align, 1, 1, max, NULL, alignment, NULL);
       *p = fill_character;
     }
 }
@@ -344,8 +343,7 @@ frag_align_pattern (int alignment, const char *fill_pattern,
 {
   char *p;
 
-  p = frag_var (rs_align, n_fill, n_fill, (relax_substateT) max,
-		(symbolS *) 0, (offsetT) alignment, (char *) 0);
+  p = frag_var (rs_align, n_fill, n_fill, max, NULL, alignment, NULL);
   memcpy (p, fill_pattern, n_fill);
 }
 
@@ -355,18 +353,11 @@ frag_align_pattern (int alignment, const char *fill_pattern,
 #define NOP_OPCODE 0x00
 #endif
 
-/* Use this to restrict the amount of memory allocated for representing
-   the alignment code.  Needs to be large enough to hold any fixed sized
+/* Use this to specify the amount of memory allocated for representing
+   the alignment code.  Needs to be large enough to hold any fixed size
    prologue plus the replicating portion.  */
 #ifndef MAX_MEM_FOR_RS_ALIGN_CODE
-  /* Assume that if HANDLE_ALIGN is not defined then no special action
-     is required to code fill, which means that we get just repeat the
-     one NOP_OPCODE byte.  */
-# ifndef HANDLE_ALIGN
-#  define MAX_MEM_FOR_RS_ALIGN_CODE  1
-# else
-#  define MAX_MEM_FOR_RS_ALIGN_CODE  (((size_t) 1 << alignment) - 1)
-# endif
+# define MAX_MEM_FOR_RS_ALIGN_CODE(p2align, max) 1
 #endif
 
 void
@@ -374,9 +365,8 @@ frag_align_code (int alignment, int max)
 {
   char *p;
 
-  p = frag_var (rs_align_code, MAX_MEM_FOR_RS_ALIGN_CODE, 1,
-		(relax_substateT) max, (symbolS *) 0,
-		(offsetT) alignment, (char *) 0);
+  p = frag_var (rs_align_code, MAX_MEM_FOR_RS_ALIGN_CODE (alignment, max),
+		1, max, NULL, alignment, NULL);
   *p = NOP_OPCODE;
 }
 

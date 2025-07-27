@@ -1,6 +1,6 @@
 /* Low level packing and unpacking of values for GDB, the GNU Debugger.
 
-   Copyright (C) 1986-2024 Free Software Foundation, Inc.
+   Copyright (C) 1986-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -107,7 +107,7 @@ ranges_contain (const std::vector<range> &ranges, LONGEST offset,
      range, we can do a binary search for the position the given range
      would be inserted if we only considered the starting OFFSET of
      ranges.  We call that position I.  Since we also have LENGTH to
-     care for (this is a range afterall), we need to check if the
+     care for (this is a range after all), we need to check if the
      _previous_ range overlaps the I range.  E.g.,
 
 	 R
@@ -267,7 +267,7 @@ insert_into_bit_range_vector (std::vector<range> *vectorp,
   /* Do a binary search for the position the given range would be
      inserted if we only considered the starting OFFSET of ranges.
      Call that position I.  Since we also have LENGTH to care for
-     (this is a range afterall), we need to check if the _previous_
+     (this is a range after all), we need to check if the _previous_
      range overlaps the I range.  E.g., calling R the new range:
 
        #1 - overlaps with previous
@@ -2833,7 +2833,7 @@ value_as_address (struct value *val)
 #endif
 }
 
-/* Unpack raw data (copied from debugee, target byte order) at VALADDR
+/* Unpack raw data (copied from debuggee, target byte order) at VALADDR
    as a long, or as a double, assuming the raw data is described
    by type TYPE.  Knows how to convert different sizes of values
    and can convert between fixed and floating point.  We don't assume
@@ -2924,7 +2924,7 @@ unpack_long (struct type *type, const gdb_byte *valaddr)
     }
 }
 
-/* Unpack raw data (copied from debugee, target byte order) at VALADDR
+/* Unpack raw data (copied from debuggee, target byte order) at VALADDR
    as a CORE_ADDR, assuming the raw data is described by type TYPE.
    We don't assume any alignment for the raw data.  Return value is in
    host byte order.
@@ -3266,6 +3266,9 @@ unpack_bits_as_long (struct type *field_type, const gdb_byte *valaddr,
 	}
     }
 
+  if (field_type->code () == TYPE_CODE_RANGE)
+    val += field_type->bounds ()->bias;
+
   return val;
 }
 
@@ -3296,17 +3299,24 @@ unpack_value_field_as_long (struct type *type, const gdb_byte *valaddr,
   return 1;
 }
 
-/* Unpack a field FIELDNO of the specified TYPE, from the anonymous
-   object at VALADDR.  See unpack_bits_as_long for more details.  */
+/* See value.h.  */
+
+LONGEST
+unpack_field_as_long (const gdb_byte *valaddr, struct field *field)
+{
+  int bitpos = field->loc_bitpos ();
+  int bitsize = field->bitsize ();
+  struct type *field_type = field->type ();
+
+  return unpack_bits_as_long (field_type, valaddr, bitpos, bitsize);
+}
+
+/* See value.h.  */
 
 LONGEST
 unpack_field_as_long (struct type *type, const gdb_byte *valaddr, int fieldno)
 {
-  int bitpos = type->field (fieldno).loc_bitpos ();
-  int bitsize = type->field (fieldno).bitsize ();
-  struct type *field_type = type->field (fieldno).type ();
-
-  return unpack_bits_as_long (field_type, valaddr, bitpos, bitsize);
+  return unpack_field_as_long (valaddr, &type->field (fieldno));
 }
 
 /* See value.h.  */
@@ -4486,9 +4496,7 @@ test_value_copy ()
 } /* namespace selftests */
 #endif /* GDB_SELF_TEST */
 
-void _initialize_values ();
-void
-_initialize_values ()
+INIT_GDB_FILE (values)
 {
   cmd_list_element *show_convenience_cmd
     = add_cmd ("convenience", no_class, show_convenience, _("\

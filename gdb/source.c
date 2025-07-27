@@ -1,5 +1,5 @@
 /* List lines of source files for GDB, the GNU debugger.
-   Copyright (C) 1986-2024 Free Software Foundation, Inc.
+   Copyright (C) 1986-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -1910,9 +1910,7 @@ source_lines_range::source_lines_range (int startline,
 }
 
 
-void _initialize_source ();
-void
-_initialize_source ()
+INIT_GDB_FILE (source)
 {
   init_source_path ();
 

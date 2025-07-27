@@ -568,6 +568,7 @@
 
 #define SHT_ANDROID_RELR             0x6fffff00
 
+#define SHT_GNU_SFRAME		     0x6ffffff4	/* SFrame stack trace information.  */
 #define SHT_GNU_ATTRIBUTES           0x6ffffff5	/* Object attributes */
 #define SHT_GNU_HASH	             0x6ffffff6	/* GNU style symbol hash table */
 #define SHT_GNU_LIBLIST	             0x6ffffff7	/* List of prelink dependencies */
@@ -740,6 +741,9 @@
 					/*   Note: name must be "LINUX".  */
 #define NT_ARM_ZT       0x40d           /* AArch64 SME2 ZT registers.  */
 					/*   Note: name must be "LINUX".  */
+#define NT_ARM_GCS	0x410		/* AArch64 Guarded Control Stack
+					   registers.  */
+					/*   Note  name must be "LINUX".  */
 #define NT_ARC_V2	0x600		/* ARC HS accumulator/extra registers.  */
 					/*   note name must be "LINUX".  */
 #define NT_LARCH_CPUCFG 0xa00		/* LoongArch CPU config registers */
@@ -1040,6 +1044,11 @@
 #define GNU_PROPERTY_AARCH64_FEATURE_1_BTI	(1U << 0)
 #define GNU_PROPERTY_AARCH64_FEATURE_1_PAC	(1U << 1)
 #define GNU_PROPERTY_AARCH64_FEATURE_1_GCS	(1U << 2)
+
+/* RISC-V specific GNU PROPERTY. */
+#define GNU_PROPERTY_RISCV_FEATURE_1_AND	0xc0000000
+#define GNU_PROPERTY_RISCV_FEATURE_1_CFI_LP_UNLABELED	(1U << 0)
+#define GNU_PROPERTY_RISCV_FEATURE_1_CFI_SS		(1U << 1)
 
 /* Values used in GNU .note.ABI-tag notes (NT_GNU_ABI_TAG).  */
 #define GNU_ABI_TAG_LINUX	0

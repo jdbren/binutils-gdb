@@ -860,14 +860,15 @@ proc run_ld_link_exec_tests { ldtests args } {
 }
 
 # List contains test-items with 3 items followed by 2 lists, one item and
-# one optional item:
+# 2 optional items:
 #  0:name
-#  1:ld or ar options
+#  1:leading ld or ar options
 #  2:compile options
 #  3:filenames of source files
 #  4:action and options.
 #  5:name of output file
 #  6:language (optional)
+#  7:trailing ld options (optional), placed after object files
 #
 # Actions:
 # objdump: Apply objdump options on result.  Compare with regex (last arg).
@@ -899,6 +900,7 @@ proc run_cc_link_tests { ldtests } {
 	set actions [lindex $testitem 4]
 	set binfile tmpdir/[lindex $testitem 5]
 	set lang [lindex $testitem 6]
+	set trailing_ldflags [lindex $testitem 7]
 	set objfiles {}
 	set is_unresolved 0
 	set failed 0
@@ -927,6 +929,7 @@ proc run_cc_link_tests { ldtests } {
 	#verbose -log "actions   is $actions"
 	#verbose -log "binfile   is $binfile"
 	#verbose -log "lang      is $lang"
+	#verbose -log "trailing_ldflags is $trailing_ldflags"
 
 	foreach actionlist $actions {
 	    set action [lindex $actionlist 0]
@@ -1006,7 +1009,7 @@ proc run_cc_link_tests { ldtests } {
 		untested $testname
 		continue
 	    }
-	    ld_link $cc_cmd $binfile "-L$srcdir/$subdir $ldflags $objfiles"
+	    ld_link $cc_cmd $binfile "-L$srcdir/$subdir $ldflags $objfiles $trailing_ldflags"
 	    set ld_output "$exec_output"
 
 	    if { $check_ld(source) == "regexp" } then {
@@ -1665,36 +1668,6 @@ proc skip_ctf_tests { } {
     return 1
 }
 
-# Check if the assembler supports SFrame.
-
-proc check_as_sframe { } {
-    global check_as_sframe_result
-    global as
-    if [info exists check_as_sframe_result] {
-	return $check_as_sframe_result
-    }
-
-    # SFrame generation needs CFI support
-    if { ![check_as_cfi] } {
-	set check_as_sframe_result 0;
-	return 0
-    }
-
-    set as_file "tmpdir/check_as_sframe.s"
-    set as_fh [open $as_file w 0666]
-    puts $as_fh "# Generated file. DO NOT EDIT"
-    puts $as_fh "\t.cfi_sections \".sframe\""
-    puts $as_fh "\t.cfi_startproc"
-    puts $as_fh "\t.cfi_endproc"
-    close $as_fh
-    remote_download host $as_file
-    verbose -log "Checking SFrame:"
-    set success [ld_assemble $as $as_file "/dev/null"]
-    #remote_file host delete $as_file
-    set check_as_sframe_result $success
-    return $success
-}
-
 proc skip_sframe_tests { } {
 # FIXME TODO
 #    global enable_libsframe
@@ -1703,7 +1676,7 @@ proc skip_sframe_tests { } {
 #	return 1
 #    }
 
-    if [check_as_sframe] {
+    if [gas_sframe_check] {
 	return 0
     }
 

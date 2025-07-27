@@ -30,6 +30,7 @@
 #include "gdb/gdb-index.h"
 #include "filenames.h"
 #include "safe-ctype.h"
+#include "sframe-api.h"
 #include <assert.h>
 
 #ifdef HAVE_LIBDEBUGINFOD
@@ -102,6 +103,7 @@ int do_debug_str;
 int do_debug_str_offsets;
 int do_debug_loc;
 int do_gdb_index;
+int do_sframe;
 int do_trace_info;
 int do_trace_abbrevs;
 int do_trace_aranges;
@@ -7324,7 +7326,7 @@ display_debug_loc (struct dwarf_section *section, void *file)
   unsigned int *array = NULL;
   const char *suffix = strrchr (section->name, '.');
   bool is_dwo = false;
-  int is_loclists = strstr (section->name, "debug_loclists") != NULL;
+  bool is_loclists = strstr (section->name, "debug_loclists") != NULL;
   uint64_t next_header_offset = 0;
 
   if (suffix && strcmp (suffix, ".dwo") == 0)
@@ -7450,6 +7452,16 @@ display_debug_loc (struct dwarf_section *section, void *file)
       debug_info *debug_info_p = debug_information + i;
       uint32_t offset_count;
 
+      /* .debug_loclists section is loaded into debug_information as
+	 DWARF-5 debug info and .debug_loc section is loaded into
+	 debug_information as pre-DWARF-5 debug info.  When dumping
+	 .debug_loc section, we should only process pre-DWARF-5 debug
+	 info in debug_information.  When dumping .debug_loclists
+	 section, we should only process DWARF-5 info in
+	 debug_information.  */
+      if ((debug_info_p->dwarf_version >= 5) != is_loclists)
+	continue;
+
       if (!locs_sorted)
 	{
 	  for (k = 0; k < debug_info_p->num_loc_offsets; k++)
@@ -7462,7 +7474,7 @@ display_debug_loc (struct dwarf_section *section, void *file)
 
       /* .debug_loclists has a per-unit header.
 	 Update start if we are detecting it.  */
-      if (debug_info_p->dwarf_version == 5)
+      if (debug_info_p->dwarf_version >= 5)
 	{
 	  j = locs_sorted ? 0 : array [0];
 
@@ -7676,6 +7688,37 @@ static int
 display_trace_info (struct dwarf_section *section, void *file)
 {
   return process_debug_info (section, file, section->abbrev_sec, false, true);
+}
+
+static int
+display_sframe (struct dwarf_section *section, void *file ATTRIBUTE_UNUSED)
+{
+  sframe_decoder_ctx *sfd_ctx = NULL;
+  unsigned char *data = section->start;
+  size_t sf_size = section->size;
+  int err = 0;
+
+  if (strcmp (section->name, "") == 0)
+    {
+      error (_("Section name must be provided \n"));
+      return false;
+    }
+
+  /* Decode the contents of the section.  */
+  sfd_ctx = sframe_decode ((const char*)data, sf_size, &err);
+  if (!sfd_ctx || err)
+    {
+      error (_("SFrame decode failure: %s\n"), sframe_errmsg (err));
+      return false;
+    }
+
+  printf (_("Contents of the SFrame section %s:"), section->name);
+  /* Dump the contents as text.  */
+  dump_sframe (sfd_ctx, section->address);
+
+  sframe_decoder_free (&sfd_ctx);
+
+  return true;
 }
 
 static int
@@ -8080,7 +8123,7 @@ range_entry_compar (const void *ap, const void *bp)
   return (a > b) - (b > a);
 }
 
-static void
+static unsigned char *
 display_debug_ranges_list (unsigned char *  start,
 			   unsigned char *  finish,
 			   unsigned int     pointer_size,
@@ -8127,6 +8170,8 @@ display_debug_ranges_list (unsigned char *  start,
 
       putchar ('\n');
     }
+
+  return start;
 }
 
 static unsigned char *
@@ -8348,6 +8393,7 @@ display_debug_ranges (struct dwarf_section *section,
 {
   unsigned char *start = section->start;
   unsigned char *last_start = start;
+  unsigned char *last_end;
   uint64_t bytes = section->size;
   unsigned char *section_begin = start;
   unsigned char *finish = start + bytes;
@@ -8411,14 +8457,11 @@ display_debug_ranges (struct dwarf_section *section,
   qsort (range_entries, num_range_list, sizeof (*range_entries),
 	 range_entry_compar);
 
-  if (dwarf_check != 0 && range_entries[0].ranges_offset != 0)
-    warn (_("Range lists in %s section start at %#" PRIx64 "\n"),
-	  section->name, range_entries[0].ranges_offset);
-
   putchar ('\n');
   if (!is_rnglists)
     printf (_("    Offset   Begin    End\n"));
 
+  last_end = NULL;
   for (i = 0; i < num_range_list; i++)
     {
       struct range_entry *range_entry = &range_entries[i];
@@ -8457,6 +8500,12 @@ display_debug_ranges (struct dwarf_section *section,
 
       next = section_begin + offset; /* Offset is from the section start, the base has already been added.  */
 
+      if (i == 0)
+	{
+	  last_end = section_begin;
+	  if (is_rnglists)
+	    last_end += 2 * offset_size - 4 + 2 + 1 + 1 + 4;
+	}
       /* If multiple DWARF entities reference the same range then we will
 	 have multiple entries in the `range_entries' list for the same
 	 offset.  Thanks to the sort above these will all be consecutive in
@@ -8466,11 +8515,15 @@ display_debug_ranges (struct dwarf_section *section,
 	continue;
       last_offset = offset;
 
-      if (dwarf_check != 0 && i > 0)
+      if (dwarf_check != 0)
 	{
 	  if (start < next)
-	    warn (_("There is a hole [%#tx - %#tx] in %s section.\n"),
-		  start - section_begin, next - section_begin, section->name);
+	    {
+	      if (last_end != next)
+		warn (_("There is a hole [%#tx - %#tx] in %s section.\n"),
+		      last_end - section_begin, next - section_begin,
+		      section->name);
+	    }
 	  else if (start > next)
 	    {
 	      if (next == last_start)
@@ -8484,11 +8537,14 @@ display_debug_ranges (struct dwarf_section *section,
       last_start = next;
 
       if (is_rnglists)
-        display_debug_rnglists_list
-	  (start, finish, pointer_size, offset, base_address, debug_info_p->addr_base);
+	last_end
+	  = display_debug_rnglists_list
+	      (start, finish, pointer_size, offset, base_address,
+	       debug_info_p->addr_base);
       else
-        display_debug_ranges_list
-	  (start, finish, pointer_size, offset, base_address);
+	last_end
+	  = display_debug_ranges_list
+	      (start, finish, pointer_size, offset, base_address);
     }
 
   /* Display trailing empty (or unreferenced) compile units, if any.  */
@@ -8526,6 +8582,8 @@ typedef struct Frame_Chunk
 }
 Frame_Chunk;
 
+typedef bool (*is_mach_augmentation_ftype) (char c);
+static is_mach_augmentation_ftype is_mach_augmentation;
 typedef const char *(*dwarf_regname_lookup_ftype) (unsigned int);
 static dwarf_regname_lookup_ftype dwarf_regnames_lookup_func;
 static const char *const *dwarf_regnames;
@@ -8838,9 +8896,22 @@ init_dwarf_regnames_loongarch (void)
   dwarf_regnames_lookup_func = regname_internal_by_table_only;
 }
 
-void
-init_dwarf_regnames_by_elf_machine_code (unsigned int e_machine)
+static bool
+is_nomach_augmentation (char c ATTRIBUTE_UNUSED)
 {
+  return false;
+}
+
+static bool
+is_aarch64_augmentation (char c)
+{
+  return (c == 'B' || c == 'G');
+}
+
+void
+init_dwarf_by_elf_machine_code (unsigned int e_machine)
+{
+  is_mach_augmentation = is_nomach_augmentation;
   dwarf_regnames_lookup_func = NULL;
   is_aarch64 = false;
 
@@ -8862,6 +8933,7 @@ init_dwarf_regnames_by_elf_machine_code (unsigned int e_machine)
 
     case EM_AARCH64:
       init_dwarf_regnames_aarch64 ();
+      is_mach_augmentation = is_aarch64_augmentation;
       break;
 
     case EM_S390:
@@ -8885,9 +8957,10 @@ init_dwarf_regnames_by_elf_machine_code (unsigned int e_machine)
    architecture and specific machine type of a BFD.  */
 
 void
-init_dwarf_regnames_by_bfd_arch_and_mach (enum bfd_architecture arch,
-					  unsigned long mach)
+init_dwarf_by_bfd_arch_and_mach (enum bfd_architecture arch,
+				 unsigned long mach)
 {
+  is_mach_augmentation = is_nomach_augmentation;
   dwarf_regnames_lookup_func = NULL;
   is_aarch64 = false;
 
@@ -8915,6 +8988,7 @@ init_dwarf_regnames_by_bfd_arch_and_mach (enum bfd_architecture arch,
 
     case bfd_arch_aarch64:
       init_dwarf_regnames_aarch64();
+      is_mach_augmentation = is_aarch64_augmentation;
       break;
 
     case bfd_arch_s390:
@@ -9160,7 +9234,7 @@ read_cie (unsigned char *start, unsigned char *end,
 	    fc->fde_encoding = *q++;
 	  else if (*p == 'S')
 	    ;
-	  else if (*p == 'B')
+	  else if (is_mach_augmentation (*p))
 	    ;
 	  else
 	    break;
@@ -10907,7 +10981,7 @@ display_debug_links (struct dwarf_section *  section,
       (padding)   If needed to reach a 4 byte boundary.
       (uint32_t)  CRC32 value.
 
-    The .gun_debugaltlink section is formatted as:
+    The .gnu_debugaltlink section is formatted as:
       (c-string)  Filename.
       (binary)    Build-ID.  */
 
@@ -12307,7 +12381,7 @@ load_build_id_debug_file (const char * main_filename ATTRIBUTE_UNUSED, void * ma
 		      + strlen (".debug")
 		      /* The next string should be the same as the longest
 			 name found in the prefixes[] array below.  */
-		      + strlen ("/usrlib64/debug/usr")
+		      + strlen ("/usr/lib64/debug/usr/")
 		      + 1);
   void * handle;
 
@@ -12318,7 +12392,7 @@ load_build_id_debug_file (const char * main_filename ATTRIBUTE_UNUSED, void * ma
       "/usr/lib/debug/",
       "/usr/lib/debug/usr/",
       "/usr/lib64/debug/",
-      "/usr/lib64/debug/usr"
+      "/usr/lib64/debug/usr/"
     };
   long unsigned int i;
 
@@ -12648,6 +12722,7 @@ static const debug_dump_long_opts debug_option_table[] =
   /* For compatibility with earlier versions of readelf.  */
   { 'r', "ranges", &do_debug_aranges, 1 },
   { 's', "str", &do_debug_str, 1 },
+  { '\0', "sframe-internal-only", &do_sframe, 1 },
   { 'T', "trace_aranges", &do_trace_aranges, 1 },
   { 't', "pubtypes", &do_debug_pubtypes, 1 },
   { 'U', "trace_info", &do_trace_info, 1 },
@@ -12806,6 +12881,7 @@ struct dwarf_section_display debug_displays[] =
   { { ".debug_weaknames",   ".zdebug_weaknames",     "",	 NO_ABBREVS },	    display_debug_not_supported, NULL,		false },
   { { ".gdb_index",	    "",			     "",	 NO_ABBREVS },	    display_gdb_index,	    &do_gdb_index,	false },
   { { ".debug_names",	    "",			     "",	 NO_ABBREVS },	    display_debug_names,    &do_gdb_index,	false },
+  { { ".sframe",	    "",			     "",	 NO_ABBREVS },	    display_sframe,	    &do_sframe,		true },
   { { ".trace_info",	    "",			     "",	 ABBREV (trace_abbrev) }, display_trace_info, &do_trace_info,	true },
   { { ".trace_abbrev",	    "",			     "",	 NO_ABBREVS },	    display_debug_abbrev,   &do_trace_abbrevs,	false },
   { { ".trace_aranges",	    "",			     "",	 NO_ABBREVS },	    display_debug_aranges,  &do_trace_aranges,	false },

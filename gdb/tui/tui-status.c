@@ -1,6 +1,6 @@
 /* TUI status line.
 
-   Copyright (C) 1998-2024 Free Software Foundation, Inc.
+   Copyright (C) 1998-2025 Free Software Foundation, Inc.
 
    Contributed by Hewlett-Packard Company.
 
@@ -325,9 +325,7 @@ tui_update_command (const char *arg, int from_tty)
 /* Function to initialize gdb commands, for tui window stack
    manipulation.  */
 
-void _initialize_tui_stack ();
-void
-_initialize_tui_stack ()
+INIT_GDB_FILE (tui_stack)
 {
   add_com ("update", class_tui, tui_update_command,
 	   _("\

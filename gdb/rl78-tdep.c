@@ -1,6 +1,6 @@
 /* Target-dependent code for the Renesas RL78 for GDB, the GNU debugger.
 
-   Copyright (C) 2011-2024 Free Software Foundation, Inc.
+   Copyright (C) 2011-2025 Free Software Foundation, Inc.
 
    Contributed by Red Hat, Inc.
 
@@ -1488,9 +1488,7 @@ rl78_gdbarch_init (struct gdbarch_info info, struct gdbarch_list *arches)
 
 /* Register the above initialization routine.  */
 
-void _initialize_rl78_tdep ();
-void
-_initialize_rl78_tdep ()
+INIT_GDB_FILE (rl78_tdep)
 {
   gdbarch_register (bfd_arch_rl78, rl78_gdbarch_init);
 }

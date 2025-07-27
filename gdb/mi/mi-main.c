@@ -1,6 +1,6 @@
 /* MI Command Set.
 
-   Copyright (C) 2000-2024 Free Software Foundation, Inc.
+   Copyright (C) 2000-2025 Free Software Foundation, Inc.
 
    Contributed by Cygnus Solutions (a Red Hat company).
 
@@ -2218,7 +2218,7 @@ timestamp (struct mi_timestamp *tv)
   using namespace std::chrono;
 
   tv->wallclock = steady_clock::now ();
-  run_time_clock::now (tv->utime, tv->stime);
+  get_run_time (tv->utime, tv->stime, run_time_scope::process);
 }
 
 static void
@@ -2768,9 +2768,7 @@ mi_parse_thread_group_id (const char *id)
   return (int) num;
 }
 
-void _initialize_mi_main ();
-void
-_initialize_mi_main ()
+INIT_GDB_FILE (mi_main)
 {
   set_show_commands mi_async_cmds
     = add_setshow_boolean_cmd ("mi-async", class_run,

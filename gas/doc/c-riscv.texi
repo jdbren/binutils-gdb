@@ -41,9 +41,11 @@ Generate position-independent code
 @item -fno-pic
 Don't generate position-independent code (default)
 
-@cindex @samp{-march=ISA} option, RISC-V
-@item -march=ISA
-Select the base isa, as specified by ISA.  For example -march=rv32ima.
+@cindex @samp{-march=ISA|Profiles|Profiles_ISA} option, RISC-V
+@item -march=ISA|Profiles|Profiles_ISA
+Select the base isa, as specified by ISA or Profiles or Profies_ISA.
+For example @samp{-march=rv32ima} @samp{-march=RVI20U64}
+@samp{-march=RVI20U64_d}.
 If this option and the architecture attributes aren't set, then assembler
 will check the default configure setting --with-arch=ISA.
 
@@ -179,12 +181,14 @@ instead of just
 It's not expected that options are changed in this manner during regular use,
 but there are a handful of esoteric cases like the one above where users need
 to disable particular features of the assembler for particular code sequences.
-However, it's also useful to enable/disable the extensions for some specific
-code regions by @samp{.option arch, +-}.  This is very common in the ifunc
-libraries.  We can support functions which are implemented by different
-extensions in the same library, but these should not affect any file-level
-settings, like the elf architecture attribute.  The complete list of option
-arguments is shown below:
+However, it's also useful to enable and reset the extensions for some specific
+code regions by @samp{.option arch, +ext} and @samp{.option arch, ISA}.  Or
+use @samp{.option push} and @samp{.option pop} at the beginning and end of the
+code, so that we can indirectly turn on and off extensions in this range.  This
+is very common in the ifunc libraries.  We can support functions which are
+implemented by different extensions in the same library, but these should not
+affect any file-level settings, like the elf architecture attribute.  The
+complete list of option arguments is shown below:
 
 @table @code
 @item push
@@ -195,9 +199,11 @@ command-line options are respected for the bulk of the file being assembled.
 
 @item rvc
 @itemx norvc
-Enables or disables the generation of compressed instructions.  Instructions
-are opportunistically compressed by the RISC-V assembler when possible, but
-sometimes this behavior is not desirable, especially when handling alignments.
+Enable the generation of base compressed instructions (C extension), or
+disable the generation of all compressed instructions (C and all Zc*
+extensions).  Instructions are opportunistically compressed by the RISC-V
+assembler when possible, but sometimes this behavior is not desirable,
+especially when handling alignments.
 
 @item pic
 @itemx nopic
@@ -215,17 +221,11 @@ desirable.
 Enables or disables the CSR checking.
 
 @item arch, @var{+extension[version]} [,...,@var{+extension_n[version_n]}]
-@itemx arch, @var{-extension} [,...,@var{-extension_n}]
 @itemx arch, @var{ISA}
-Enables or disables the extensions for specific code region.  For example,
-@samp{.option arch, +m2p0} means add m extension with version 2.0, and
-@samp{.option arch, -f, -d} means remove extensions, f and d, from the
-architecture string.  Note that, @samp{.option arch, +c, -c} have the same
-behavior as @samp{.option rvc, norvc}.  However, they are also undesirable
-sometimes.  Besides, @samp{.option arch, -i} is illegal, since we cannot
-remove the base i extension anytime.  If you want to reset the whole ISA
-string, you can also use @samp{.option arch, rv32imac} to overwrite the
-previous settings.
+Enable or reset the extensions for specific code region.  For example,
+@samp{.option arch, +m2p0} means add m extension with version 2.0.
+@samp{.option arch, rv32imac} means reset and overwrite the previous settings
+by rv32imac.
 @end table
 
 @cindex INSN directives
@@ -737,7 +737,12 @@ to be recorded in the attribute as @code{RV32I2P0} in which @code{2P0} stands
 for the default version of its base ISA.  On the other hand, the architecture
 @code{RV32G} has to be presented as @code{RV32I2P0_M2P0_A2P0_F2P0_D2P0} in
 which the abbreviation @code{G} is expanded to the @code{IMAFD} combination
-with default versions of the standard extensions.
+with default versions of the standard extensions. All Profiles are expanded
+ to the mandatory extensions it includes then processing.  For example,
+@code{RVI20U32} is expanded to @code{RV32I2P0} for processing, which contains
+the mandatory extensions @code{I} as it defined.  And you can also combine
+Profiles with ISA use underline, like @code{RVI20U32_D} is expanded to the
+@code{RV32I2P0_F2P0_D2P0}.
 
 @item Tag_RISCV_unaligned_access (6)
 Tag_RISCV_unaligned_access is 0 for files that do not allow any unaligned
@@ -891,5 +896,26 @@ It is documented in @url{https://sifive.cdn.prismic.io/sifive/c3829e36-8552-41f0
 XSfCease provides an instruction to instigates power-down sequence.
 
 It is documented in @url{https://sifive.cdn.prismic.io/sifive/767804da-53b2-4893-97d5-b7c030ae0a94_s76mc_core_complex_manual_21G3.pdf}.
+
+@item XMipsCbop
+The XMipsCbop extension provides instruction mips.pref.
+
+It is documented in @url{https://mips.com/wp-content/uploads/2025/03/P8700-F_Programmers_Reference_Manual_Rev1.82_3-19-2025.pdf}.
+
+@item XMipsCmov
+The XMipsCmov extension provides instruction mips.ccmov.
+
+It is documented in @url{https://mips.com/wp-content/uploads/2025/03/P8700-F_Programmers_Reference_Manual_Rev1.82_3-19-2025.pdf}.
+
+@item XMipsExectl
+The XMipsExectl extension provides instructions mips.ehb, mips.ihb and mips.pause.
+
+It is documented in @url{https://mips.com/wp-content/uploads/2025/03/P8700-F_Programmers_Reference_Manual_Rev1.82_3-19-2025.pdf}.
+
+@item XMipsSlsp
+
+The XMipsSlsp extension provides instructions mips.ldp, mips.lwp, mips.sdp and mips.swp.
+
+It is documented in @url{https://mips.com/wp-content/uploads/2025/03/P8700-F_Programmers_Reference_Manual_Rev1.82_3-19-2025.pdf}.
 
 @end table

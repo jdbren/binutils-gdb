@@ -1,6 +1,6 @@
 /* Top level stuff for GDB, the GNU debugger.
 
-   Copyright (C) 1986-2024 Free Software Foundation, Inc.
+   Copyright (C) 1986-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -381,7 +381,7 @@ check_frame_language_change (void)
   /* Warn the user if the working language does not match the language
      of the current frame.  Only warn the user if we are actually
      running the program, i.e. there is a stack.  */
-  /* FIXME: This should be cacheing the frame and only running when
+  /* FIXME: This should be caching the frame and only running when
      the frame changes.  */
 
   if (warn_frame_lang_mismatch && has_stack_frames ())
@@ -415,7 +415,7 @@ wait_sync_command_done (void)
      point.  */
   scoped_enable_commit_resumed enable ("sync wait");
 
-  while (gdb_do_one_event () >= 0)
+  while (current_interpreter ()->do_one_event () >= 0)
     if (ui->prompt_state != PROMPT_BLOCKED)
       break;
 }
@@ -1031,7 +1031,7 @@ gdb_readline_wrapper (const char *prompt)
     (*after_char_processing_hook) ();
   gdb_assert (after_char_processing_hook == NULL);
 
-  while (gdb_do_one_event () >= 0)
+  while (current_interpreter ()->do_one_event () >= 0)
     if (gdb_readline_wrapper_done)
       break;
 
@@ -2347,9 +2347,7 @@ gdb_init ()
   init_colorsupport_var ();
 }
 
-void _initialize_top ();
-void
-_initialize_top ()
+INIT_GDB_FILE (top)
 {
   /* Determine a default value for the history filename.  */
   const char *tmpenv = getenv ("GDBHISTFILE");

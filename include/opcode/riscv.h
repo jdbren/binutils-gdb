@@ -132,6 +132,15 @@ static inline unsigned int riscv_insn_length (insn_t insn)
   ((RV_X(x, 25, 1)) | (RV_X(x, 20, 5) << 1) | (RV_IMM_SIGN_N(x, 20, 5) << 5))
 #define EXTRACT_CV_SIMD_UIMM6(x) \
   ((RV_X(x, 25, 1)) | (RV_X(x, 20, 5) << 1))
+/* Vendor-specific (MIPS) extract macros.  */
+#define EXTRACT_MIPS_LWP_IMM(x) \
+  (RV_X(x, 22, 5) << 2)
+#define EXTRACT_MIPS_LDP_IMM(x) \
+  (RV_X(x, 23, 4) << 3)
+#define EXTRACT_MIPS_SWP_IMM(x) \
+  ((RV_X(x, 25, 2) << 5) | (RV_X(x, 9, 3) << 2))
+#define EXTRACT_MIPS_SDP_IMM(x) \
+  ((RV_X(x, 25, 2) << 5) | (RV_X(x, 10, 2) << 3))
 
 #define ENCODE_ITYPE_IMM(x) \
   (RV_X(x, 0, 12) << 20)
@@ -200,6 +209,15 @@ static inline unsigned int riscv_insn_length (insn_t insn)
   ((RV_X(x, 0, 1) << 25) | (RV_X(x, 1, 5) << 20))
 #define ENCODE_CV_SIMD_UIMM6(x) \
   ((RV_X(x, 0, 1) << 25) | (RV_X(x, 1, 5) << 20))
+/* Vendor-specific (MIPS) encode macros.  */
+#define ENCODE_MIPS_LWP_IMM(x) \
+  (RV_X(x, 2, 5) << 22)
+#define ENCODE_MIPS_LDP_IMM(x) \
+  (RV_X(x, 3, 4) << 23)
+#define ENCODE_MIPS_SWP_IMM(x) \
+  ((RV_X(x, 5, 2) << 25) | (RV_X(x, 2, 3) << 9))
+#define ENCODE_MIPS_SDP_IMM(x) \
+  ((RV_X(x, 5, 2) << 25) | (RV_X(x, 3, 2) << 10))
 
 #define VALID_ITYPE_IMM(x) (EXTRACT_ITYPE_IMM(ENCODE_ITYPE_IMM(x)) == (x))
 #define VALID_STYPE_IMM(x) (EXTRACT_STYPE_IMM(ENCODE_STYPE_IMM(x)) == (x))
@@ -383,8 +401,27 @@ static inline unsigned int riscv_insn_length (insn_t insn)
 #define OP_MASK_XSO1            0x1
 #define OP_SH_XSO1              26
 
+/* MIPS fields.  */
+#define OP_MASK_MIPS_IMM9		0x1ff
+#define OP_SH_MIPS_IMM9		20
+#define OP_MASK_MIPS_HINT		0x1f
+#define OP_SH_MIPS_HINT		7
+#define OP_MASK_MIPS_LWP_OFFSET     0x1f
+#define OP_SH_MIPS_LWP_OFFSET       22
+#define OP_MASK_MIPS_LDP_OFFSET     0xf
+#define OP_SH_MIPS_LDP_OFFSET       23
+#define OP_MASK_MIPS_SWP_OFFSET9    0x7
+#define OP_SH_MIPS_SWP_OFFSET9      9
+#define OP_MASK_MIPS_SWP_OFFSET25   0x3
+#define OP_SH_MIPS_SWP_OFFSET25     25
+#define OP_MASK_MIPS_SDP_OFFSET10   0x3
+#define OP_SH_MIPS_SDP_OFFSET10     10
+#define OP_MASK_MIPS_SDP_OFFSET25   0x3
+#define OP_SH_MIPS_SDP_OFFSET25     25
+
 /* ABI names for selected x-registers.  */
 
+#define X_ZERO 0
 #define X_RA 1
 #define X_SP 2
 #define X_GP 3
@@ -456,18 +493,18 @@ enum riscv_insn_class
   INSN_CLASS_NONE,
 
   INSN_CLASS_I,
-  INSN_CLASS_C,
+  INSN_CLASS_ZCA,
   INSN_CLASS_M,
   INSN_CLASS_F,
   INSN_CLASS_D,
   INSN_CLASS_Q,
-  INSN_CLASS_F_AND_C,
-  INSN_CLASS_D_AND_C,
+  INSN_CLASS_ZCF,
+  INSN_CLASS_ZCD,
   INSN_CLASS_ZICOND,
   INSN_CLASS_ZICSR,
   INSN_CLASS_ZIFENCEI,
   INSN_CLASS_ZIHINTNTL,
-  INSN_CLASS_ZIHINTNTL_AND_C,
+  INSN_CLASS_ZIHINTNTL_AND_ZCA,
   INSN_CLASS_ZIHINTPAUSE,
   INSN_CLASS_ZIMOP,
   INSN_CLASS_ZMMUL,
@@ -526,6 +563,8 @@ enum riscv_insn_class
   INSN_CLASS_ZCMP,
   INSN_CLASS_ZCMT,
   INSN_CLASS_SMCTR_OR_SSCTR,
+  INSN_CLASS_ZILSD,
+  INSN_CLASS_ZCLSD,
   INSN_CLASS_SMRNMI,
   INSN_CLASS_SVINVAL,
   INSN_CLASS_ZICBOM,
@@ -563,6 +602,10 @@ enum riscv_insn_class
   INSN_CLASS_XSFVQMACCQOQ,
   INSN_CLASS_XSFVQMACCDOD,
   INSN_CLASS_XSFVFNRCLIPXFQF,
+  INSN_CLASS_XMIPSCBOP,
+  INSN_CLASS_XMIPSCMOV,
+  INSN_CLASS_XMIPSEXECTL,
+  INSN_CLASS_XMIPSLSP,
 };
 
 /* This structure holds information for a particular instruction.  */

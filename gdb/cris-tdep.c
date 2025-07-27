@@ -1,6 +1,6 @@
 /* Target dependent code for CRIS, for GDB, the GNU debugger.
 
-   Copyright (C) 2001-2024 Free Software Foundation, Inc.
+   Copyright (C) 2001-2025 Free Software Foundation, Inc.
 
    Contributed by Axis Communications AB.
    Written by Hendrik Ruijter, Stefan Andersson, and Orjan Friberg.
@@ -1467,7 +1467,7 @@ cris_register_size (struct gdbarch *gdbarch, int regno)
 }
 
 /* Nonzero if regno should not be fetched from the target.  This is the case
-   for unimplemented (size 0) and non-existant registers.  */
+   for unimplemented (size 0) and non-existent registers.  */
 
 static int
 cris_cannot_fetch_register (struct gdbarch *gdbarch, int regno)
@@ -1508,7 +1508,7 @@ cris_cannot_store_register (struct gdbarch *gdbarch, int regno)
 }
 
 /* Nonzero if regno should not be fetched from the target.  This is the case
-   for unimplemented (size 0) and non-existant registers.  */
+   for unimplemented (size 0) and non-existent registers.  */
 
 static int
 crisv32_cannot_fetch_register (struct gdbarch *gdbarch, int regno)
@@ -3816,9 +3816,7 @@ static void cris_iterate_over_regset_sections (struct gdbarch *gdbarch,
       &cris_regset, NULL, cb_data);
 }
 
-void _initialize_cris_tdep ();
-void
-_initialize_cris_tdep ()
+INIT_GDB_FILE (cris_tdep)
 {
   gdbarch_register (bfd_arch_cris, cris_gdbarch_init, cris_dump_tdep);
   

@@ -1,6 +1,6 @@
 /* Target-dependent code for the Z80.
 
-   Copyright (C) 1986-2024 Free Software Foundation, Inc.
+   Copyright (C) 1986-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -1331,14 +1331,14 @@ ez80_ddfd_insn_table[] =
   { 0007, 0307, 2, insn_default }, //"ld rr,(ii+d)"
   { 0061, 0377, 2, insn_default }, //"ld ii,(ii+d)"
   /* common instructions */
-  { 0011, 0367, 2, insn_default }, //"add ii,rr"
+  { 0011, 0317, 1, insn_default }, //"add ii,rr"
   { 0041, 0377, 3, insn_default }, //"ld ii,nn"
   { 0042, 0367, 3, insn_default }, //"ld (nn),ii", "ld ii,(nn)"
   { 0043, 0367, 1, insn_default }, //"inc ii", "dec ii"
   { 0044, 0366, 1, insn_default }, //"inc/dec iih/iil"
   { 0046, 0367, 2, insn_default }, //"ld iih,n", "ld iil,n"
   { 0064, 0376, 2, insn_default }, //"inc (ii+d)", "dec (ii+d)"
-  { 0066, 0377, 2, insn_default }, //"ld (ii+d),n"
+  { 0066, 0377, 3, insn_default }, //"ld (ii+d),n"
   { 0166, 0377, 0, insn_default }, //not an instruction
   { 0160, 0370, 2, insn_default }, //"ld (ii+d),r"
   { 0104, 0306, 1, insn_default }, //"ld r,iih", "ld r,iil"
@@ -1360,7 +1360,7 @@ ez80_adl_ddfd_insn_table[] =
 {
   { 0007, 0307, 2, insn_default }, //"ld rr,(ii+d)"
   { 0061, 0377, 2, insn_default }, //"ld ii,(ii+d)"
-  { 0011, 0367, 1, insn_default }, //"add ii,rr"
+  { 0011, 0317, 1, insn_default }, //"add ii,rr"
   { 0041, 0377, 4, insn_default }, //"ld ii,nn"
   { 0042, 0367, 4, insn_default }, //"ld (nn),ii", "ld ii,(nn)"
   { 0043, 0367, 1, insn_default }, //"inc ii", "dec ii"
@@ -1455,10 +1455,7 @@ z80_get_insn_info (struct gdbarch *gdbarch, const gdb_byte *buf, int *size)
   while (1);
 }
 
-extern initialize_file_ftype _initialize_z80_tdep;
-
-void
-_initialize_z80_tdep ()
+INIT_GDB_FILE (z80_tdep)
 {
   gdbarch_register (bfd_arch_z80, z80_gdbarch_init);
   initialize_tdesc_z80 ();

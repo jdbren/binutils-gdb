@@ -1,5 +1,5 @@
 /* Low level interface to ptrace, for GDB when running under Unix.
-   Copyright (C) 1986-2024 Free Software Foundation, Inc.
+   Copyright (C) 1986-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -944,9 +944,7 @@ initialize_stdin_serial (void)
   stdin_serial = serial_fdopen (0);
 }
 
-void _initialize_inflow ();
-void
-_initialize_inflow ()
+INIT_GDB_FILE (inflow)
 {
   add_info ("terminal", info_terminal_command,
 	    _("Print inferior's saved terminal status."));

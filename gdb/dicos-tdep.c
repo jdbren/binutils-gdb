@@ -1,6 +1,6 @@
 /* Target-dependent, architecture-independent code for DICOS, for GDB.
 
-   Copyright (C) 2009-2024 Free Software Foundation, Inc.
+   Copyright (C) 2009-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -27,7 +27,7 @@
 void
 dicos_init_abi (struct gdbarch *gdbarch)
 {
-  set_gdbarch_so_ops (gdbarch, &solib_target_so_ops);
+  set_gdbarch_make_solib_ops (gdbarch, make_target_solib_ops);
 
   /* Every process, although has its own address space, sees the same
      list of shared libraries.  There's no "main executable" in DICOS,

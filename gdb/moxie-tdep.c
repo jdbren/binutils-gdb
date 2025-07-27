@@ -1,6 +1,6 @@
 /* Target-dependent code for Moxie.
 
-   Copyright (C) 2009-2024 Free Software Foundation, Inc.
+   Copyright (C) 2009-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -240,7 +240,7 @@ moxie_skip_prologue (struct gdbarch *gdbarch, CORE_ADDR pc)
 		  return sal.end;
 		}
 	    }
-	  /* No useable line symbol.  Use result of prologue parsing
+	  /* No usable line symbol.  Use result of prologue parsing
 	     method.  */
 	  return plg_end;
 	}
@@ -1101,9 +1101,7 @@ moxie_gdbarch_init (struct gdbarch_info info, struct gdbarch_list *arches)
 
 /* Register this machine's init routine.  */
 
-void _initialize_moxie_tdep ();
-void
-_initialize_moxie_tdep ()
+INIT_GDB_FILE (moxie_tdep)
 {
   gdbarch_register (bfd_arch_moxie, moxie_gdbarch_init);
 }

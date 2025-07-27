@@ -1,6 +1,6 @@
 /* Debug logging for the symbol file functions for the GNU debugger, GDB.
 
-   Copyright (C) 2013-2024 Free Software Foundation, Inc.
+   Copyright (C) 2013-2025 Free Software Foundation, Inc.
 
    Contributed by Cygnus Support, using pieces from other GDB modules.
 
@@ -895,9 +895,7 @@ show_debug_symfile (struct ui_file *file, int from_tty,
   gdb_printf (file, _("Symfile debugging is %s.\n"), value);
 }
 
-void _initialize_symfile_debug ();
-void
-_initialize_symfile_debug ()
+INIT_GDB_FILE (symfile_debug)
 {
   add_setshow_boolean_cmd ("symfile", no_class, &debug_symfile, _("\
 Set debugging of the symfile functions."), _("\

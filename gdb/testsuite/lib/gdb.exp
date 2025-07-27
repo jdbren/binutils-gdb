@@ -1,4 +1,4 @@
-# Copyright 1992-2024 Free Software Foundation, Inc.
+# Copyright 1992-2025 Free Software Foundation, Inc.
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -269,6 +269,13 @@ if ![info exists INTERNAL_GDBFLAGS] {
     }
 
     set INTERNAL_GDBFLAGS [append_gdb_data_directory_option $INTERNAL_GDBFLAGS]
+
+    # Handle the case that "interactive-mode auto" reports off.
+    append INTERNAL_GDBFLAGS { -iex "set interactive-mode on"}
+
+    if { [ishost "*-*-mingw*"] } {
+	append INTERNAL_GDBFLAGS { -iex "maint set console-translation-mode binary"}
+    }
 }
 
 # The variable gdb_prompt is a regexp which matches the gdb prompt.
@@ -280,9 +287,12 @@ if {![info exists gdb_prompt]} {
     set gdb_prompt "\\(gdb\\)"
 }
 
-# A regexp that matches the pagination prompt.
-set pagination_prompt \
+# The pagination prompt.
+set pagination_prompt_str \
     "--Type <RET> for more, q to quit, c to continue without paging--"
+
+# A regexp that matches the pagination prompt.
+set pagination_prompt [string_to_regexp $pagination_prompt_str]
 
 # The variable fullname_syntax_POSIX is a regexp which matches a POSIX 
 # absolute path ie. /foo/ 
@@ -1026,7 +1036,10 @@ proc command_to_message { command } {
 #   should not be anchored at the end of the buffer.  This means that the
 #   pattern can match even if there is stuff output after the prompt.  Does not
 #   have any effect if -prompt is specified.
-# -lbl specifies that line-by-line matching will be used.
+# -lbl specifies that line-by-line matching will be used.  This means
+#   that lines from GDB not matched by any pattern will be consumed from
+#   the output buffer.  This helps avoid buffer overflows and timeouts
+#   when testing verbose commands.
 # EXPECT_ARGUMENTS will be fed to expect in addition to the standard
 #   patterns.  Pattern elements will be evaluated in the caller's
 #   context; action elements will be executed in the caller's context.
@@ -1124,6 +1137,7 @@ proc gdb_test_multiple { command message args } {
     global any_spawn_id
 
     set line_by_line 0
+    set lbl_anchor_re ""
     set prompt_regexp ""
     set prompt_anchor 1
     for {set i 0} {$i < [llength $args]} {incr i} {
@@ -1133,6 +1147,7 @@ proc gdb_test_multiple { command message args } {
 	    set prompt_regexp [lindex $args $i]
 	} elseif { $arg == "-lbl" } {
 	    set line_by_line 1
+	    set lbl_anchor_re "^"
 	} elseif { $arg == "-no-prompt-anchor" } {
 	    set prompt_anchor 0
 	} else {
@@ -1391,7 +1406,7 @@ proc gdb_test_multiple { command message args } {
 	    fail "$errmsg"
 	    set result -1
 	}
-	-re "\r\n$prompt_regexp" {
+	-re "${lbl_anchor_re}\r\n$prompt_regexp" {
 	    if {![string match "" $message]} {
 		fail "$message"
 	    }
@@ -2301,7 +2316,8 @@ proc default_gdb_exit {} {
 	}
     }
 
-    if { [is_remote host] && [board_info host exists fileid] } {
+    if { ([is_remote host] && [board_info host exists fileid])
+	 || [istarget *-*-mingw*] } {
 	send_gdb "quit\n"
 	gdb_expect 10 {
 	    -re "y or n" {
@@ -2314,7 +2330,9 @@ proc default_gdb_exit {} {
     }
 
     if ![is_remote host] {
-	remote_close host
+	if {[catch { remote_close host } message]} {
+	    warning "closing gdb failed with: $message"
+	}
     }
     unset gdb_spawn_id
     unset ::gdb_tty_name
@@ -2575,6 +2593,17 @@ proc default_gdb_start { } {
 	}
 	-re "^\033\\\[.2004h$gdb_prompt $" {
 	    # Output with -q, and bracketed paste mode enabled, see above.
+	    verbose "GDB initialized."
+	}
+	-re "^\033\\\[6n$gdb_prompt $" {
+	    # With MSYS2 and TERM={xterm,ansi}, I get:
+	    #
+	    #   builtin_spawn gdb -q ...
+	    #   ^[[6n(gdb)
+	    #
+	    # We set TERM to dumb by default to avoid this, but some
+	    # test-cases set TERM to xterm or ansi, in which case we get this
+	    # output.
 	    verbose "GDB initialized."
 	}
 	-re "$gdb_prompt $"	{
@@ -3758,7 +3787,8 @@ proc supports_reverse {} {
          || [istarget "aarch64*-*-linux*"]
 	 || [istarget "loongarch*-*-linux*"]
          || [istarget "powerpc*-*-linux*"]
-         || [istarget "s390*-*-linux*"] } {
+	 || [istarget "s390*-*-linux*"]
+	 || [istarget "riscv*-*-*"] } {
 	return 1
     }
 
@@ -3937,13 +3967,16 @@ gdb_caching_proc is_aarch32_target {} {
 	return 0
     }
 
-    set list {}
-    foreach reg \
-	{r0 r1 r2 r3} {
-	    lappend list "\tmov $reg, $reg"
-	}
+    return [gdb_can_simple_compile aarch32 {
+	int main (void) {
+	    asm ("\tmov r0, r0");
+	    asm ("\tmov r1, r1");
+	    asm ("\tmov r2, r2");
+	    asm ("\tmov r3, r3");
 
-    return [gdb_can_simple_compile aarch32 [join $list \n]]
+	    return 0;
+	}
+    }]
 }
 
 # Return 1 if this target is an aarch64, either lp64 or ilp32.
@@ -5081,6 +5114,40 @@ proc skip_inline_var_tests {} {
     }
 
     return 0
+}
+
+# Return whether we allow running fork-related testcases.  Targets
+# that don't even have any concept of fork will just fail to compile
+# the testcases and skip the tests that way if this returns true for
+# them.  Unix targets that do have a fork system call, but don't
+# support intercepting forks will want to return false here, otherwise
+# the testcases that exercise fork may hit a number of long cascading
+# time out sequences.
+
+proc allow_fork_tests {} {
+    if {[istarget "*-*-cygwin*"] || [istarget "*-*-mingw*"]} {
+	return 0
+    }
+
+    return 1
+}
+
+# Return whether we allow running testcases that want to debug
+# multiple inferiors with the same target.  Not all targets support
+# this.  Note that some tests add a second inferior but never start
+# it.  Those tests should not be skipped due to this proc returning
+# false.
+
+proc allow_multi_inferior_tests {} {
+    if {[istarget "*-*-cygwin*"] || [istarget "*-*-mingw*"]} {
+	return 0
+    }
+
+    if {[use_gdb_stub]} {
+	return 0
+    }
+
+    return 1
 }
 
 # Return a 1 if we should run tests that require hardware breakpoints
@@ -6916,7 +6983,7 @@ proc kill_wait_spawned_process { proc_spawn_id } {
 proc spawn_id_get_pid { spawn_id } {
     set testpid [exp_pid -i $spawn_id]
 
-    if { [istarget "*-*-cygwin*"] } {
+    if { [istarget "*-*-cygwin*"] || [istarget "*-*-mingw*"] } {
 	# testpid is the Cygwin PID, GDB uses the Windows PID, which
 	# might be different due to the way fork/exec works.
 	set testpid [ exec ps -e | gawk "{ if (\$1 == $testpid) print \$4; }" ]
@@ -7001,6 +7068,24 @@ proc gdb_load_cmd { args } {
 	}
     }
     return -1
+}
+
+# Return non-zero if 'gcore' command is available.
+gdb_caching_proc gcore_cmd_available { } {
+    gdb_exit
+    gdb_start
+
+    # Does this gdb support gcore?
+    gdb_test_multiple "help gcore" "" {
+	-re -wrap "Undefined command: .*" {
+	    return 0
+	}
+	-re -wrap "Save a core file .*" {
+	    return 1
+	}
+    }
+
+    return 0
 }
 
 # Invoke "gcore".  CORE is the name of the core file to write.  TEST
@@ -7466,6 +7551,22 @@ proc default_gdb_init { test_file_name } {
     setenv LC_ALL C
     setenv LC_CTYPE C
     setenv LANG C
+
+    # With MSYS2 and TERM={xterm,ansi}, I get:
+    #
+    #   builtin_spawn gdb -q ...
+    #   ^[[6n(gdb)
+    #
+    # While we're addressing this in default_gdb_start, this is not specific
+    # to gdb, other tools produce the same CSI sequence, and consequently we
+    # run into trouble in other places (like get_compiler_info).
+    #
+    # Set TERM to dumb to prevent the '^[[6n' from occurring.
+    #
+    # We could do this only for ishost *-*-mingw*, but that introduces
+    # inconsistency between platforms, with test-cases passing on one platform
+    # but failing on the other.  So, we do this for all platforms.
+    setenv TERM dumb
 
     # Don't let a .inputrc file or an existing setting of INPUTRC mess
     # up the test results.  Certain tests (style tests and TUI tests)
@@ -9282,7 +9383,12 @@ proc core_find {binfile {deletefiles {}} {arg ""}} {
     file mkdir $coredir
     catch "system \"(cd ${coredir}; ulimit -c unlimited; ${binfile} ${arg}; true) >/dev/null 2>&1\""
     #      remote_exec host "${binfile}"
-    foreach i "${coredir}/core ${coredir}/core.coremaker.c ${binfile}.core" {
+    set binfile_basename [file tail $binfile]
+    foreach i [list \
+		   ${coredir}/core \
+		   ${coredir}/core.coremaker.c \
+		   ${coredir}/${binfile_basename}.core \
+		   ${coredir}/${binfile_basename}.exe.core] {
 	if [remote_file build exists $i] {
 	    remote_exec build "mv $i $destcore"
 	    set found 1
@@ -9887,6 +9993,10 @@ proc gdb_stdin_log_init { } {
 
     set logfile [standard_output_file_with_gdb_instance gdb.in]
     set in_file [open $logfile w]
+
+    verbose -log ""
+    verbose -log "Starting logfile: $logfile"
+    verbose -log ""
 }
 
 # Write to the file for logging gdb input.

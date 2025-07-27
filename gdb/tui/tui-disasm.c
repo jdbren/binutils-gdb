@@ -1,6 +1,6 @@
 /* Disassembly display.
 
-   Copyright (C) 1998-2024 Free Software Foundation, Inc.
+   Copyright (C) 1998-2025 Free Software Foundation, Inc.
 
    Contributed by Hewlett-Packard Company.
 
@@ -546,9 +546,7 @@ run_tests ()
 } /* namespace selftests */
 #endif /* GDB_SELF_TEST */
 
-void _initialize_tui_disasm ();
-void
-_initialize_tui_disasm ()
+INIT_GDB_FILE (tui_disasm)
 {
 #if GDB_SELF_TEST
   selftests::register_test ("tui-disasm", selftests::tui::disasm::run_tests);

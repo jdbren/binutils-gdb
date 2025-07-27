@@ -2033,7 +2033,8 @@ do_special_encoding (struct aarch64_inst *inst)
     {
       idx = select_operand_for_sf_field_coding (inst->opcode);
       value = (inst->operands[idx].qualifier == AARCH64_OPND_QLF_X
-	       || inst->operands[idx].qualifier == AARCH64_OPND_QLF_SP)
+	       || inst->operands[idx].qualifier == AARCH64_OPND_QLF_SP
+	       || inst->operands[idx].qualifier == AARCH64_OPND_QLF_S_D)
 	? 1 : 0;
       insert_field (FLD_sf, &inst->value, value, 0);
       if (inst->opcode->flags & F_N)
@@ -2061,6 +2062,13 @@ do_special_encoding (struct aarch64_inst *inst)
 	default: return;
 	}
       insert_field (FLD_rcpc3_size, &inst->value, value, 0);
+    }
+
+  if (inst->opcode->flags & F_LSFE_SZ)
+    {
+      value = aarch64_get_qualifier_standard_value (inst->operands[0].qualifier);
+      insert_field (FLD_ldst_size, &inst->value, value, 0);
+      return;
     }
 
   if (inst->opcode->flags & F_SIZEQ)
@@ -2271,8 +2279,21 @@ aarch64_encode_variant_using_iclass (struct aarch64_inst *inst)
       insert_field (FLD_SVE_sz2, &inst->value, aarch64_get_variant (inst), 0);
       break;
 
+    case sve_size_sd3:
+      insert_field (FLD_SVE_sz3, &inst->value, aarch64_get_variant (inst), 0);
+      break;
+
+    case sve_size_sd4:
+      insert_field (FLD_SVE_sz4, &inst->value, aarch64_get_variant (inst), 0);
+      break;
+
     case sve_size_hsd2:
       insert_field (FLD_SVE_size, &inst->value,
+		    aarch64_get_variant (inst) + 1, 0);
+      break;
+
+    case sve_size_hsd3:
+      insert_field (FLD_len, &inst->value,
 		    aarch64_get_variant (inst) + 1, 0);
       break;
 

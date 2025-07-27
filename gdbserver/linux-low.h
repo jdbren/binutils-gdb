@@ -1,5 +1,5 @@
 /* Internal interfaces for the GNU/Linux specific target code for gdbserver.
-   Copyright (C) 2002-2024 Free Software Foundation, Inc.
+   Copyright (C) 2002-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -303,6 +303,8 @@ public:
 
   int multifs_open (int pid, const char *filename, int flags,
 		    mode_t mode) override;
+
+  int multifs_lstat (int pid, const char *filename, struct stat *st) override;
 
   int multifs_unlink (int pid, const char *filename) override;
 

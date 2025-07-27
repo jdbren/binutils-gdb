@@ -1,5 +1,5 @@
 /* Helper routines for C++ support in GDB.
-   Copyright (C) 2003-2024 Free Software Foundation, Inc.
+   Copyright (C) 2003-2025 Free Software Foundation, Inc.
 
    Contributed by David Carlton and by Kealia, Inc.
 
@@ -926,7 +926,7 @@ cp_lookup_nested_symbol (struct type *parent_type,
     case TYPE_CODE_NAMESPACE:
     case TYPE_CODE_UNION:
     case TYPE_CODE_ENUM:
-    /* NOTE: Handle modules here as well, because Fortran is re-using the C++
+    /* NOTE: Handle modules here as well, because Fortran is reusing the C++
        specific code to lookup nested symbols in modules, by calling the
        method lookup_symbol_nonlocal, which ends up here.  */
     case TYPE_CODE_MODULE:
@@ -1049,9 +1049,7 @@ maintenance_cplus_namespace (const char *args, int from_tty)
   gdb_printf (_("The `maint namespace' command was removed.\n"));
 }
 
-void _initialize_cp_namespace ();
-void
-_initialize_cp_namespace ()
+INIT_GDB_FILE (cp_namespace)
 {
   struct cmd_list_element *cmd;
 

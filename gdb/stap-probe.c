@@ -1,6 +1,6 @@
 /* SystemTap probe support for GDB.
 
-   Copyright (C) 2012-2024 Free Software Foundation, Inc.
+   Copyright (C) 2012-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -1225,7 +1225,7 @@ stap_parse_argument (const char **arg, struct type *atype,
 {
   /* We need to initialize the expression buffer, in order to begin
      our parsing efforts.  We use language_c here because we may need
-     to do pointer arithmetics.  */
+     to do pointer arithmetic.  */
   struct stap_parse_info p (*arg, atype, language_def (language_c),
 			    gdbarch);
 
@@ -1748,9 +1748,7 @@ info_probes_stap_command (const char *arg, int from_tty)
   info_probes_for_spops (arg, from_tty, &stap_static_probe_ops);
 }
 
-void _initialize_stap_probe ();
-void
-_initialize_stap_probe ()
+INIT_GDB_FILE (stap_probe)
 {
   all_static_probe_ops.push_back (&stap_static_probe_ops);
 

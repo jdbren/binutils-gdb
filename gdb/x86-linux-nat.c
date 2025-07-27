@@ -1,6 +1,6 @@
 /* Native-dependent code for GNU/Linux x86 (i386 and x86-64).
 
-   Copyright (C) 1999-2024 Free Software Foundation, Inc.
+   Copyright (C) 1999-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -210,9 +210,7 @@ x86_linux_get_thread_area (pid_t pid, void *addr, unsigned int *base_addr)
 }
 
 
-void _initialize_x86_linux_nat ();
-void
-_initialize_x86_linux_nat ()
+INIT_GDB_FILE (x86_linux_nat)
 {
   /* Initialize the debug register function vectors.  */
   x86_dr_low.set_control = x86_linux_dr_set_control;

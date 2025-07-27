@@ -1,6 +1,6 @@
 /* Definitions for frame unwinder, for GDB, the GNU debugger.
 
-   Copyright (C) 2003-2024 Free Software Foundation, Inc.
+   Copyright (C) 2003-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -49,6 +49,7 @@ static constexpr std::initializer_list<const frame_unwind *>
   standard_unwinders =
 {
   &dummy_frame_unwind,
+#if defined(DWARF_FORMAT_AVAILABLE)
   /* The DWARF tailcall sniffer must come before the inline sniffer.
      Otherwise, we can end up in a situation where a DWARF frame finds
      tailcall information, but then the inline sniffer claims a frame
@@ -57,6 +58,7 @@ static constexpr std::initializer_list<const frame_unwind *>
      activated if the newer frame was created using the DWARF
      unwinder, and it also found tailcall information.  */
   &dwarf2_tailcall_frame_unwind,
+#endif
   &inline_frame_unwind,
 };
 
@@ -612,9 +614,7 @@ maintenance_enable_frame_unwinders (const char *args, int from_tty)
   enable_disable_frame_unwinders (args, from_tty, true);
 }
 
-void _initialize_frame_unwind ();
-void
-_initialize_frame_unwind ()
+INIT_GDB_FILE (frame_unwind)
 {
   /* Add "maint info frame-unwinders".  */
   add_cmd ("frame-unwinders",

@@ -1,6 +1,6 @@
 /* Python interface to types.
 
-   Copyright (C) 2008-2024 Free Software Foundation, Inc.
+   Copyright (C) 2008-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -158,7 +158,7 @@ convert_field (struct type *type, int field)
 	}
       else
 	{
-	  if (type->field (field).loc_kind () == FIELD_LOC_KIND_DWARF_BLOCK)
+	  if (type->field (field).loc_is_dwarf_block ())
 	    arg = gdbpy_ref<>::new_reference (Py_None);
 	  else
 	    arg = gdb_py_object_from_longest (type->field (field).loc_bitpos ());

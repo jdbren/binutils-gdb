@@ -56,15 +56,18 @@ extern const size_t _bfd_target_vector_entries;
 
 /*
 FUNCTION
-	bfd_check_format
+	bfd_check_format_lto
 
 SYNOPSIS
-	bool bfd_check_format (bfd *abfd, bfd_format format);
+	bool bfd_check_format_lto (bfd *abfd, bfd_format format,
+				   bool lto_sections_removed);
 
 DESCRIPTION
 	Verify if the file attached to the BFD @var{abfd} is compatible
 	with the format @var{format} (i.e., one of <<bfd_object>>,
 	<<bfd_archive>> or <<bfd_core>>).
+
+	If LTO_SECTION_REMOVED is true, ignore plugin target.
 
 	If the BFD has been set to a specific target before the
 	call, only the named target and format combination is
@@ -100,9 +103,30 @@ DESCRIPTION
 */
 
 bool
+bfd_check_format_lto (bfd *abfd, bfd_format format,
+		      bool lto_sections_removed)
+{
+  return bfd_check_format_matches_lto (abfd, format, NULL,
+				       lto_sections_removed);
+}
+
+
+/*
+FUNCTION
+	bfd_check_format
+
+SYNOPSIS
+	bool bfd_check_format (bfd *abfd, bfd_format format);
+
+DESCRIPTION
+	Similar to bfd_check_format_plugin, except plugin target isn't
+	ignored.
+*/
+
+bool
 bfd_check_format (bfd *abfd, bfd_format format)
 {
-  return bfd_check_format_matches (abfd, format, NULL);
+  return bfd_check_format_matches_lto (abfd, format, NULL, false);
 }
 
 struct bfd_preserve
@@ -331,6 +355,25 @@ print_and_clear_messages (struct per_xvec_messages *list,
 	free (iter);
       iter = next;
     }
+
+  /* Don't retain a pointer to free'd memory.  */
+  list->next = NULL;
+}
+
+/* Discard all messages associated with TARG in LIST.  Unlike
+   print_and_clear_messages, PER_XVEC_NO_TARGET is not valid for TARG.  */
+
+static void
+clear_messages (struct per_xvec_messages *list,
+		const bfd_target *targ)
+{
+  struct per_xvec_messages *iter;
+
+  for (iter = list; iter != NULL; iter = iter->next)
+    {
+      if (iter->targ == targ)
+	clear_warnmsg (&iter->messages);
+    }
 }
 
 /* This a copy of lto_section defined in GCC (lto-streamer.h).  */
@@ -388,11 +431,12 @@ bfd_set_lto_type (bfd *abfd ATTRIBUTE_UNUSED)
 
 /*
 FUNCTION
-	bfd_check_format_matches
+	bfd_check_format_matches_lto
 
 SYNOPSIS
-	bool bfd_check_format_matches
-	  (bfd *abfd, bfd_format format, char ***matching);
+	bool bfd_check_format_matches_lto
+	  (bfd *abfd, bfd_format format, char ***matching,
+	   bool lto_sections_removed);
 
 DESCRIPTION
 	Like <<bfd_check_format>>, except when it returns FALSE with
@@ -404,10 +448,14 @@ DESCRIPTION
 
 	When done with the list that @var{matching} points to, the caller
 	should free it.
+
+	If LTO_SECTION_REMOVED is true, ignore plugin target.
 */
 
 bool
-bfd_check_format_matches (bfd *abfd, bfd_format format, char ***matching)
+bfd_check_format_matches_lto (bfd *abfd, bfd_format format,
+			      char ***matching,
+			      bool lto_sections_removed ATTRIBUTE_UNUSED)
 {
   extern const bfd_target binary_vec;
   const bfd_target * const *target;
@@ -451,7 +499,18 @@ bfd_check_format_matches (bfd *abfd, bfd_format format, char ***matching)
   /* Avoid clashes with bfd_cache_close_all running in another
      thread.  */
   if (!bfd_cache_set_uncloseable (abfd, true, &old_in_format_matches))
-    return false;
+    {
+      free (matching_vector);
+      return false;
+    }
+
+  /* Locking is required here in order to manage _bfd_section_id.  */
+  if (!bfd_lock ())
+    {
+      bfd_cache_set_uncloseable (abfd, old_in_format_matches, NULL);
+      free (matching_vector);
+      return false;
+    }
 
   /* Presume the answer is yes.  */
   abfd->format = format;
@@ -461,16 +520,17 @@ bfd_check_format_matches (bfd *abfd, bfd_format format, char ***matching)
      of an archive.  */
   orig_messages = _bfd_set_error_handler_caching (&messages);
 
-  /* Locking is required here in order to manage _bfd_section_id.  */
-  if (!bfd_lock ())
-    return false;
-
   preserve_match.marker = NULL;
   if (!bfd_preserve_save (abfd, &preserve, NULL))
     goto err_ret;
 
-  /* If the target type was explicitly specified, just check that target.  */
-  if (!abfd->target_defaulted)
+  /* If the target type was explicitly specified, just check that target.
+     If LTO_SECTION_REMOVED is true, don't match the plugin target.  */
+  if (!abfd->target_defaulted
+#if BFD_SUPPORTS_PLUGINS
+      && (!lto_sections_removed || !bfd_plugin_target_p (abfd->xvec))
+#endif
+     )
     {
       if (bfd_seek (abfd, 0, SEEK_SET) != 0)	/* rewind! */
 	goto err_ret;
@@ -514,10 +574,12 @@ bfd_check_format_matches (bfd *abfd, bfd_format format, char ***matching)
 	 searching.  Don't match the plugin target if we have another
 	 alternative since we want to properly set the input format
 	 before allowing a plugin to claim the file.  Also, don't
-	 check the default target twice.  */
+	 check the default target twice.   If LTO_SECTION_REMOVED is
+	 true, don't match the plugin target.  */
       if (*target == &binary_vec
 #if BFD_SUPPORTS_PLUGINS
-	  || (match_count != 0 && bfd_plugin_target_p (*target))
+	  || ((lto_sections_removed || match_count != 0)
+	      && bfd_plugin_target_p (*target))
 #endif
 	  || (!abfd->target_defaulted && *target == save_targ))
 	continue;
@@ -544,6 +606,12 @@ bfd_check_format_matches (bfd *abfd, bfd_format format, char ***matching)
 
       /* Change BFD's target temporarily.  */
       abfd->xvec = *target;
+
+      /* It is possible that targets appear multiple times in
+	 bfd_target_vector.  If this is the case, then we want to avoid
+	 accumulating duplicate messages for a target in MESSAGES, so
+	 discard any previous messages associated with this target.  */
+      clear_messages (&messages, abfd->xvec);
 
       if (bfd_seek (abfd, 0, SEEK_SET) != 0)
 	goto err_ret;
@@ -754,12 +822,39 @@ bfd_check_format_matches (bfd *abfd, bfd_format format, char ***matching)
  out:
   if (preserve_match.marker != NULL)
     bfd_preserve_finish (abfd, &preserve_match);
-  bfd_preserve_restore (abfd, &preserve);
+  if (preserve.marker != NULL)
+    bfd_preserve_restore (abfd, &preserve);
   _bfd_restore_error_handler_caching (orig_messages);
   print_and_clear_messages (&messages, PER_XVEC_NO_TARGET);
   bfd_cache_set_uncloseable (abfd, old_in_format_matches, NULL);
   bfd_unlock ();
   return false;
+}
+
+/*
+FUNCTION
+	bfd_check_format_matches
+
+SYNOPSIS
+	bool bfd_check_format_matches
+	  (bfd *abfd, bfd_format format, char ***matching);
+
+DESCRIPTION
+	Like <<bfd_check_format>>, except when it returns FALSE with
+	<<bfd_errno>> set to <<bfd_error_file_ambiguously_recognized>>.  In that
+	case, if @var{matching} is not NULL, it will be filled in with
+	a NULL-terminated list of the names of the formats that matched,
+	allocated with <<malloc>>.
+	Then the user may choose a format and try again.
+
+	When done with the list that @var{matching} points to, the caller
+	should free it.
+*/
+
+bool
+bfd_check_format_matches (bfd *abfd, bfd_format format, char ***matching)
+{
+  return bfd_check_format_matches_lto (abfd, format, matching, false);
 }
 
 /*

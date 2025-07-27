@@ -1,6 +1,6 @@
 /* MI Interpreter Definitions and Commands for GDB, the GNU debugger.
 
-   Copyright (C) 2002-2024 Free Software Foundation, Inc.
+   Copyright (C) 2002-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -34,7 +34,7 @@
 #include "mi-common.h"
 #include "observable.h"
 #include "gdbthread.h"
-#include "solist.h"
+#include "solib.h"
 #include "objfiles.h"
 #include "tracepoint.h"
 #include "cli-out.h"
@@ -726,9 +726,9 @@ mi_output_solib_attribs_1 (ui_out *uiout, const solib &solib,
 {
   gdbarch *gdbarch = current_inferior ()->arch ();
 
-  uiout->field_string ("id", solib.so_original_name);
-  uiout->field_string ("target-name", solib.so_original_name);
-  uiout->field_string ("host-name", solib.so_name);
+  uiout->field_string ("id", solib.original_name);
+  uiout->field_string ("target-name", solib.original_name);
+  uiout->field_string ("host-name", solib.name);
   if (include_symbols_loaded_p)
     uiout->field_signed ("symbols-loaded", solib.symbols_loaded);
   if (!gdbarch_has_global_solist (current_inferior ()->arch ()))
@@ -935,9 +935,7 @@ mi_interp_factory (const char *name)
   return new mi_interp (name);
 }
 
-void _initialize_mi_interp ();
-void
-_initialize_mi_interp ()
+INIT_GDB_FILE (mi_interp)
 {
   /* The various interpreter levels.  */
   interp_factory_register (INTERP_MI2, mi_interp_factory);

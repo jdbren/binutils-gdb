@@ -381,6 +381,7 @@ static const autofilter_entry_type autofilter_liblist[] =
   { STRING_COMMA_LEN ("libmsvcrt") },
   { STRING_COMMA_LEN ("libmsvcrt-os") },
   { STRING_COMMA_LEN ("libucrt") },
+  { STRING_COMMA_LEN ("libucrtapp") },
   { STRING_COMMA_LEN ("libucrtbase") },
   { STRING_COMMA_LEN ("libpthread") },
   { STRING_COMMA_LEN ("libwinpthread") },
@@ -1619,10 +1620,11 @@ generate_reloc (bfd *abfd, struct bfd_link_info *info)
 		  printf ("rel: %s\n", sym->name);
 		}
 	      if (!relocs[i]->howto->pc_relative
-		  && relocs[i]->howto->type != pe_details->imagebase_reloc
-		  && (relocs[i]->howto->type < pe_details->secrel_reloc_lo
-		      || relocs[i]->howto->type > pe_details->secrel_reloc_hi)
-		  && relocs[i]->howto->type != pe_details->section_reloc)
+		  && (bfd_get_flavour (b) != bfd_target_coff_flavour
+		      || (relocs[i]->howto->type != pe_details->imagebase_reloc
+			  && (relocs[i]->howto->type < pe_details->secrel_reloc_lo
+			      || relocs[i]->howto->type > pe_details->secrel_reloc_hi)
+			  && relocs[i]->howto->type != pe_details->section_reloc)))
 		{
 		  struct bfd_symbol *sym = *relocs[i]->sym_ptr_ptr;
 		  const struct bfd_link_hash_entry *blhe
@@ -2638,9 +2640,9 @@ make_import_fixup_mark (arelent *rel, char *name)
   memcpy (fixup_name, buf, prefix_len);
 
   bh = NULL;
-  bfd_coff_link_add_one_symbol (&link_info, abfd, fixup_name, BSF_GLOBAL,
-				current_sec, /* sym->section, */
-				rel->address, NULL, true, false, &bh);
+  _bfd_generic_link_add_one_symbol (&link_info, abfd, fixup_name, BSF_GLOBAL,
+				    current_sec, /* sym->section, */
+				    rel->address, NULL, true, false, &bh);
 
   return bh->root.string;
 }

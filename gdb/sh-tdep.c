@@ -1,6 +1,6 @@
 /* Target-dependent code for Renesas Super-H, for GDB.
 
-   Copyright (C) 1993-2024 Free Software Foundation, Inc.
+   Copyright (C) 1993-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -2394,9 +2394,7 @@ sh_gdbarch_init (struct gdbarch_info info, struct gdbarch_list *arches)
   return gdbarch;
 }
 
-void _initialize_sh_tdep ();
-void
-_initialize_sh_tdep ()
+INIT_GDB_FILE (sh_tdep)
 {
   gdbarch_register (bfd_arch_sh, sh_gdbarch_init, NULL);
 

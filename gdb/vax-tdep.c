@@ -1,6 +1,6 @@
 /* Target-dependent code for the VAX.
 
-   Copyright (C) 1986-2024 Free Software Foundation, Inc.
+   Copyright (C) 1986-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -438,7 +438,7 @@ vax_frame_num_args (const frame_info_ptr &frame)
 
 
 
-/* Initialize the current architecture based on INFO.  If possible, re-use an
+/* Initialize the current architecture based on INFO.  If possible, reuse an
    architecture from ARCHES, which is a list of architectures already created
    during this debugging session.
 
@@ -506,9 +506,7 @@ vax_gdbarch_init (struct gdbarch_info info, struct gdbarch_list *arches)
   return (gdbarch);
 }
 
-void _initialize_vax_tdep ();
-void
-_initialize_vax_tdep ()
+INIT_GDB_FILE (vax_tdep)
 {
   gdbarch_register (bfd_arch_vax, vax_gdbarch_init, NULL);
 }

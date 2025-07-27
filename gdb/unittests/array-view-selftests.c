@@ -1,6 +1,6 @@
 /* Self tests for array_view for GDB, the GNU debugger.
 
-   Copyright (C) 2017-2024 Free Software Foundation, Inc.
+   Copyright (C) 2017-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -695,9 +695,7 @@ run_copy_tests ()
 } /* namespace array_view_tests */
 } /* namespace selftests */
 
-void _initialize_array_view_selftests ();
-void
-_initialize_array_view_selftests ()
+INIT_GDB_FILE (array_view_selftests)
 {
   selftests::register_test ("array_view",
 			    selftests::array_view_tests::run_tests);

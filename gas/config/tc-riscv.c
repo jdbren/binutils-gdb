@@ -93,6 +93,7 @@ enum riscv_csr_class
   CSR_CLASS_SSAIA_AND_H_32,	/* Ssaia with H, rv32 only */
   CSR_CLASS_SSAIA_OR_SSCSRIND,		/* Ssaia/Smcsrind */
   CSR_CLASS_SSAIA_OR_SSCSRIND_AND_H,	/* Ssaia/Smcsrind with H */
+  CSR_CLASS_SSCCFG,		/* Ssccfg */
   CSR_CLASS_SSCSRIND,		/* Sscsrind */
   CSR_CLASS_SSCSRIND_AND_H,	/* Sscsrind with H */
   CSR_CLASS_SSSTATEEN,		/* S[ms]stateen only */
@@ -331,6 +332,7 @@ struct riscv_option_stack
   struct riscv_option_stack *next;
   struct riscv_set_options options;
   riscv_subset_list_t *subset_list;
+  unsigned xlen;
 };
 
 static struct riscv_option_stack *riscv_opts_stack = NULL;
@@ -536,7 +538,7 @@ make_mapping_symbol (enum riscv_seg_mstate state,
     {
       /* Store current $x+arch into tc_segment_info.  */
       seg_info (now_seg)->tc_segment_info_data.arch_map_symbol = symbol;
-      xfree ((void *) buff);
+      xfree (buff);
     }
 
   /* If .fill or other data filling directive generates zero sized data,
@@ -932,7 +934,7 @@ opcode_name_lookup (char **s)
   save_c = *e;
   *e = '\0';
 
-  o = (struct opcode_name_t *) str_hash_find (opcode_names_hash, *s);
+  o = str_hash_find (opcode_names_hash, *s);
 
   /* Advance to next token if one was recognized.  */
   if (o)
@@ -960,15 +962,15 @@ static htab_t reg_names_hash = NULL;
 static htab_t csr_extra_hash = NULL;
 
 #define ENCODE_REG_HASH(cls, n) \
-  ((void *)(uintptr_t)((n) * RCLASS_MAX + (cls) + 1))
-#define DECODE_REG_CLASS(hash) (((uintptr_t)(hash) - 1) % RCLASS_MAX)
-#define DECODE_REG_NUM(hash) (((uintptr_t)(hash) - 1) / RCLASS_MAX)
+  ((n) * RCLASS_MAX + (cls) + 1)
+#define DECODE_REG_CLASS(hash) (((hash) - 1) % RCLASS_MAX)
+#define DECODE_REG_NUM(hash) (((hash) - 1) / RCLASS_MAX)
 
 static void
 hash_reg_name (enum reg_class class, const char *name, unsigned n)
 {
-  void *hash = ENCODE_REG_HASH (class, n);
-  if (str_hash_insert (reg_names_hash, name, hash, 0) != NULL)
+  uintptr_t hash = ENCODE_REG_HASH (class, n);
+  if (str_hash_insert_int (reg_names_hash, name, hash, 0) != NULL)
     as_fatal (_("internal: duplicate %s"), name);
 }
 
@@ -994,7 +996,7 @@ riscv_init_csr_hash (const char *name,
   bool need_enrty = true;
 
   pre_entry = NULL;
-  entry = (struct riscv_csr_extra *) str_hash_find (csr_extra_hash, name);
+  entry = str_hash_find (csr_extra_hash, name);
   while (need_enrty && entry != NULL)
     {
       if (entry->csr_class == class
@@ -1118,6 +1120,9 @@ riscv_csr_address (const char *csr_name,
       is_h_required = (csr_class == CSR_CLASS_SSAIA_OR_SSCSRIND_AND_H);
       extension = "ssaia or sscsrind";
       break;
+    case CSR_CLASS_SSCCFG:
+      extension = "ssccfg";
+      break;
     case CSR_CLASS_SSCSRIND:
     case CSR_CLASS_SSCSRIND_AND_H:
       is_h_required = (csr_class == CSR_CLASS_SSCSRIND_AND_H);
@@ -1206,8 +1211,7 @@ riscv_csr_address (const char *csr_name,
 static unsigned int
 reg_csr_lookup_internal (const char *s)
 {
-  struct riscv_csr_extra *r =
-    (struct riscv_csr_extra *) str_hash_find (csr_extra_hash, s);
+  struct riscv_csr_extra *r = str_hash_find (csr_extra_hash, s);
 
   if (r == NULL)
     return -1U;
@@ -1218,13 +1222,13 @@ reg_csr_lookup_internal (const char *s)
 static unsigned int
 reg_lookup_internal (const char *s, enum reg_class class)
 {
-  void *r;
+  uintptr_t r;
 
   if (class == RCLASS_CSR)
     return reg_csr_lookup_internal (s);
 
-  r = str_hash_find (reg_names_hash, s);
-  if (r == NULL || DECODE_REG_CLASS (r) != class)
+  r = str_hash_find_int (reg_names_hash, s);
+  if (r == (uintptr_t) -1 || DECODE_REG_CLASS (r) != class)
     return -1;
 
   if (riscv_subset_supports (&riscv_rps_as, "e")
@@ -1752,6 +1756,21 @@ validate_riscv_insn (const struct riscv_opcode *opc, int length)
 		    goto unknown_validate_operand;
 		}
 		break;
+	    case 'm': /* Vendor-specific (MIPS) operands.  */
+	      switch (*++oparg)
+		{
+		  case '@': USE_BITS (OP_MASK_MIPS_HINT, OP_SH_MIPS_HINT);
+			    break;
+		  case '#': USE_BITS (OP_MASK_MIPS_IMM9, OP_SH_MIPS_IMM9);
+			    break;
+		  case '$': used_bits |= ENCODE_MIPS_LDP_IMM (-1U); break;
+		  case '%': used_bits |= ENCODE_MIPS_LWP_IMM (-1U); break;
+		  case '^': used_bits |= ENCODE_MIPS_SDP_IMM (-1U); break;
+		  case '&': used_bits |= ENCODE_MIPS_SWP_IMM (-1U); break;
+		  default:
+		    goto unknown_validate_operand;
+		}
+		break;
 	    default:
 	      goto unknown_validate_operand;
 	    }
@@ -1867,15 +1886,13 @@ riscv_record_pcrel_fixup (htab_t p, const asection *sec, bfd_vma address,
 			  symbolS *symbol, bfd_vma target)
 {
   riscv_pcrel_hi_fixup entry = {sec, address, symbol, target};
-  riscv_pcrel_hi_fixup **slot =
-	(riscv_pcrel_hi_fixup **) htab_find_slot (p, &entry, INSERT);
+  void **slot = htab_find_slot (p, &entry, INSERT);
   if (slot == NULL)
     return false;
 
-  *slot = (riscv_pcrel_hi_fixup *) xmalloc (sizeof (riscv_pcrel_hi_fixup));
-  if (*slot == NULL)
-    return false;
-  **slot = entry;
+  riscv_pcrel_hi_fixup *pent = xmalloc (sizeof (*pent));
+  *slot = pent;
+  *pent = entry;
   return true;
 }
 
@@ -2029,7 +2046,7 @@ macro_build (expressionS *ep, const char *name, const char *fmt, ...)
   va_start (args, fmt);
 
   r = BFD_RELOC_UNUSED;
-  mo = (struct riscv_opcode *) str_hash_find (op_hash, name);
+  mo = str_hash_find (op_hash, name);
   gas_assert (mo);
 
   /* Find a non-RVC variant of the instruction.  append_insn will compress
@@ -2845,7 +2862,7 @@ riscv_ip (char *str, struct riscv_cl_insn *ip, expressionS *imm_expr,
 	break;
       }
 
-  insn = (struct riscv_opcode *) str_hash_find (hash, str);
+  insn = str_hash_find (hash, str);
 
   probing_insn_operands = true;
 
@@ -4173,6 +4190,92 @@ riscv_ip (char *str, struct riscv_cl_insn *ip, expressionS *imm_expr,
 #undef ENCODE_UIMM_BIT_FIELD
 		  break;
 
+		case 'm': /* Vendor-specific (MIPS) operands.  */
+		  switch (*++oparg)
+		    {
+		    case '@': /* hint 0 - 31.  */
+		      my_getExpression (imm_expr, asarg);
+		      check_absolute_expr (ip, imm_expr, FALSE);
+		      if ((unsigned long)imm_expr->X_add_number > 31)
+			as_bad(_("Improper hint amount (%lu)"),
+			       (unsigned long)imm_expr->X_add_number);
+		      INSERT_OPERAND(MIPS_HINT, *ip, imm_expr->X_add_number);
+		      imm_expr->X_op = O_absent;
+		      asarg = expr_parse_end;
+		      continue;
+
+		    case '#': /* immediate 0 - 511.  */
+		      my_getExpression (imm_expr, asarg);
+		      check_absolute_expr (ip, imm_expr, FALSE);
+		      if ((unsigned long)imm_expr->X_add_number > 511)
+			as_bad(_("Improper immediate amount (%lu)"),
+			       (unsigned long)imm_expr->X_add_number);
+		      INSERT_OPERAND(MIPS_IMM9, *ip, imm_expr->X_add_number);
+		      imm_expr->X_op = O_absent;
+		      asarg = expr_parse_end;
+		      continue;
+
+		    case '$': /* LDP offset 0 to (1<<7)-8.  */
+		      my_getExpression (imm_expr, asarg);
+		      check_absolute_expr (ip, imm_expr, FALSE);
+		      if ((unsigned long)imm_expr->X_add_number >= (1 << 7)
+			  || ((unsigned long)imm_expr->X_add_number & 0x7) != 0)
+			as_bad(_("Improper LDP offset amount (%lu)"),
+			       (unsigned long)imm_expr->X_add_number);
+		      INSERT_OPERAND(MIPS_LDP_OFFSET, *ip,
+				     (imm_expr->X_add_number >> 3));
+		      imm_expr->X_op = O_absent;
+		      asarg = expr_parse_end;
+		      continue;
+
+		    case '%': /* LWP offset 0 to (1<<7)-4.  */
+		      my_getExpression (imm_expr, asarg);
+		      check_absolute_expr (ip, imm_expr, FALSE);
+		      if ((unsigned long)imm_expr->X_add_number >= (1 << 7)
+			  || ((unsigned long)imm_expr->X_add_number & 0x3) != 0)
+			as_bad(_("Improper LWP offset amount (%lu)"),
+			       (unsigned long)imm_expr->X_add_number);
+		      INSERT_OPERAND(MIPS_LWP_OFFSET, *ip,
+				     (imm_expr->X_add_number >> 2));
+		      imm_expr->X_op = O_absent;
+		      asarg = expr_parse_end;
+		      continue;
+
+		    case '^': /* SDP offset 0 to (1<<7)-8.  */
+		      my_getExpression (imm_expr, asarg);
+		      check_absolute_expr (ip, imm_expr, FALSE);
+		      if ((unsigned long)imm_expr->X_add_number >= (1 << 7)
+			  || ((unsigned long)imm_expr->X_add_number & 0x7) != 0)
+			as_bad(_("Improper SDP offset amount (%lu)"),
+			       (unsigned long)imm_expr->X_add_number);
+		      INSERT_OPERAND(MIPS_SDP_OFFSET10, *ip,
+				     (imm_expr->X_add_number >> 3));
+		      INSERT_OPERAND(MIPS_SDP_OFFSET25, *ip,
+				     (imm_expr->X_add_number >> 5));
+		      imm_expr->X_op = O_absent;
+		      asarg = expr_parse_end;
+		      continue;
+
+		    case '&': /* SWP offset 0 to (1<<7)-4.  */
+		      my_getExpression (imm_expr, asarg);
+		      check_absolute_expr (ip, imm_expr, FALSE);
+		      if ((unsigned long)imm_expr->X_add_number >= (1 << 7)
+			  || ((unsigned long)imm_expr->X_add_number & 0x3) != 0)
+			as_bad(_("Improper SWP offset amount (%lu)"),
+			       (unsigned long)imm_expr->X_add_number);
+		      INSERT_OPERAND(MIPS_SWP_OFFSET9, *ip,
+				     (imm_expr->X_add_number >> 2));
+		      INSERT_OPERAND(MIPS_SWP_OFFSET25, *ip,
+				     (imm_expr->X_add_number >> 5));
+		      imm_expr->X_op = O_absent;
+		      asarg = expr_parse_end;
+		      continue;
+
+		    default:
+		      goto unknown_riscv_ip_operand;
+		    }
+		  break;
+
 		default:
 		  goto unknown_riscv_ip_operand;
 		}
@@ -4219,12 +4322,12 @@ riscv_ip_hardcode (char *str,
       switch (imm_expr->X_op)
 	{
 	case O_constant:
-	  values[num++] = (insn_t) imm_expr->X_add_number;
+	  values[num++] = imm_expr->X_add_number;
 	  break;
 	case O_big:
 	  /* Extract lower 32-bits of a big number.
 	     Assume that generic_bignum_to_int32 work on such number.  */
-	  values[num++] = (insn_t) generic_bignum_to_int32 ();
+	  values[num++] = generic_bignum_to_int32 ();
 	  break;
 	default:
 	  /* The first value isn't constant, so it should be
@@ -4513,7 +4616,7 @@ bool riscv_parse_name (const char *name, struct expressionS *ep,
   gas_assert (mode == expr_normal);
 
   regno = reg_lookup_internal (name, RCLASS_GPR);
-  if (regno == (unsigned int)-1)
+  if (regno == -1u)
     return false;
 
   if (symbol_find (name) != NULL)
@@ -4747,7 +4850,13 @@ md_apply_fix (fixS *fixP, valueT *valP, segT seg)
 	  bfd_vma delta = target - md_pcrel_from (fixP);
 	  bfd_putl32 (bfd_getl32 (buf) | ENCODE_JTYPE_IMM (delta), buf);
 	  if (!riscv_opts.relax && S_IS_LOCAL (fixP->fx_addsy))
-	    fixP->fx_done = 1;
+	    {
+	      if (!VALID_JTYPE_IMM (delta))
+		as_bad_where (fixP->fx_file, fixP->fx_line,
+			      _("invalid J-type offset (%+lld)"),
+			      (long long) delta);
+	      fixP->fx_done = 1;
+	    }
 	}
       break;
 
@@ -4759,7 +4868,13 @@ md_apply_fix (fixS *fixP, valueT *valP, segT seg)
 	  bfd_vma delta = target - md_pcrel_from (fixP);
 	  bfd_putl32 (bfd_getl32 (buf) | ENCODE_BTYPE_IMM (delta), buf);
 	  if (!riscv_opts.relax && S_IS_LOCAL (fixP->fx_addsy))
-	    fixP->fx_done = 1;
+	    {
+	      if (!VALID_BTYPE_IMM (delta))
+		as_bad_where (fixP->fx_file, fixP->fx_line,
+			      _("invalid B-type offset (%+lld)"),
+			      (long long) delta);
+	      fixP->fx_done = 1;
+	    }
 	}
       break;
 
@@ -4771,7 +4886,13 @@ md_apply_fix (fixS *fixP, valueT *valP, segT seg)
 	  bfd_vma delta = target - md_pcrel_from (fixP);
 	  bfd_putl16 (bfd_getl16 (buf) | ENCODE_CBTYPE_IMM (delta), buf);
 	  if (!riscv_opts.relax && S_IS_LOCAL (fixP->fx_addsy))
-	    fixP->fx_done = 1;
+	    {
+	      if (!VALID_CBTYPE_IMM (delta))
+		as_bad_where (fixP->fx_file, fixP->fx_line,
+			      _("invalid CB-type offset (%+lld)"),
+			      (long long) delta);
+	      fixP->fx_done = 1;
+	    }
 	}
       break;
 
@@ -4783,7 +4904,13 @@ md_apply_fix (fixS *fixP, valueT *valP, segT seg)
 	  bfd_vma delta = target - md_pcrel_from (fixP);
 	  bfd_putl16 (bfd_getl16 (buf) | ENCODE_CJTYPE_IMM (delta), buf);
 	  if (!riscv_opts.relax && S_IS_LOCAL (fixP->fx_addsy))
-	    fixP->fx_done = 1;
+	    {
+	      if (!VALID_CJTYPE_IMM (delta))
+		as_bad_where (fixP->fx_file, fixP->fx_line,
+			      _("invalid CJ-type offset (%+lld)"),
+			      (long long) delta);
+	      fixP->fx_done = 1;
+	    }
 	}
       break;
 
@@ -4808,7 +4935,7 @@ md_apply_fix (fixS *fixP, valueT *valP, segT seg)
 
 	  /* Record PCREL_HI20.  */
 	  if (!riscv_record_pcrel_fixup (riscv_pcrel_hi_fixup_hash,
-					 (const asection *) seg,
+					 seg,
 					 md_pcrel_from (fixP),
 					 fixP->fx_addsy,
 					 target))
@@ -4818,7 +4945,14 @@ md_apply_fix (fixS *fixP, valueT *valP, segT seg)
 		      | ENCODE_UTYPE_IMM (RISCV_CONST_HIGH_PART (value)),
 		      buf);
 	  if (!riscv_opts.relax)
-	    fixP->fx_done = 1;
+	    {
+	      if (xlen > 32
+		  && !VALID_UTYPE_IMM (RISCV_CONST_HIGH_PART (value)))
+		as_bad_where (fixP->fx_file, fixP->fx_line,
+			      _("invalid pcrel_hi offset (%+lld)"),
+			      (long long) value);
+	      fixP->fx_done = 1;
+	    }
 	}
       relaxable = true;
       break;
@@ -4830,8 +4964,7 @@ md_apply_fix (fixS *fixP, valueT *valP, segT seg)
 	 and set fx_done for -mno-relax.  */
       {
 	bfd_vma location_pcrel_hi = S_GET_VALUE (fixP->fx_addsy) + *valP;
-	riscv_pcrel_hi_fixup search =
-		{(const asection *) seg, location_pcrel_hi, 0, 0};
+	riscv_pcrel_hi_fixup search = {seg, location_pcrel_hi, 0, 0};
 	riscv_pcrel_hi_fixup *entry = htab_find (riscv_pcrel_hi_fixup_hash,
 						 &search);
 	if (entry && entry->symbol
@@ -4844,7 +4977,8 @@ md_apply_fix (fixS *fixP, valueT *valP, segT seg)
 	      bfd_putl32 (bfd_getl32 (buf) | ENCODE_STYPE_IMM (value), buf);
 	    else
 	      bfd_putl32 (bfd_getl32 (buf) | ENCODE_ITYPE_IMM (value), buf);
-	    /* Relaxations should never be enabled by `.option relax'.  */
+	    /* Relaxations should never be enabled by `.option relax'.
+	       The offset is checked by corresponding %pcrel_hi entry.  */
 	    if (!riscv_opts.relax)
 	      fixP->fx_done = 1;
 	  }
@@ -4939,7 +5073,7 @@ s_riscv_option (int x ATTRIBUTE_UNUSED)
     }
   else if (strcmp (name, "norvc") == 0)
     {
-      riscv_update_subset (&riscv_rps_as, "-c");
+      riscv_update_subset_norvc (&riscv_rps_as);
       riscv_arch_str (xlen, riscv_rps_as.subset_list, true/* update */);
       riscv_set_rvc (false);
     }
@@ -4977,6 +5111,7 @@ s_riscv_option (int x ATTRIBUTE_UNUSED)
       s->next = riscv_opts_stack;
       s->options = riscv_opts;
       s->subset_list = riscv_rps_as.subset_list;
+      s->xlen = xlen;
       riscv_opts_stack = s;
       riscv_rps_as.subset_list = riscv_copy_subset_list (s->subset_list);
     }
@@ -4993,6 +5128,7 @@ s_riscv_option (int x ATTRIBUTE_UNUSED)
 	  riscv_opts_stack = s->next;
 	  riscv_opts = s->options;
 	  riscv_rps_as.subset_list = s->subset_list;
+	  xlen = s->xlen;
 	  riscv_release_subset_list (release_subsets);
 	  free (s);
 	}
@@ -5367,7 +5503,7 @@ RISC-V options:\n\
   -fno-pic                    don't generate position-independent code (default)\n\
   -march=ISA                  set the RISC-V architecture\n\
   -misa-spec=ISAspec          set the RISC-V ISA spec (2.2, 20190608, 20191213)\n\
-  -mpriv-spec=PRIVspec        set the RISC-V privilege spec (1.10, 1.11, 1.12)\n\
+  -mpriv-spec=PRIVspec        set the RISC-V privilege spec (1.10, 1.11, 1.12, 1.13)\n\
   -mabi=ABI                   set the RISC-V ABI\n\
   -mrelax                     enable relax (default)\n\
   -mno-relax                  disable relax\n\
@@ -5616,7 +5752,7 @@ riscv_insert_uleb128_fixes (bfd *abfd ATTRIBUTE_UNUSED,
       exp_dup->X_add_number = 0; /* Set addend of SUB_ULEB128 to zero.  */
       fix_new_exp (fragP, fragP->fr_fix, 0,
 		   exp_dup, 0, BFD_RELOC_RISCV_SUB_ULEB128);
-      free ((void *) exp_dup);
+      free (exp_dup);
     }
 }
 
@@ -5643,7 +5779,7 @@ riscv_md_end (void)
 void
 riscv_adjust_symtab (void)
 {
-  bfd_map_over_sections (stdoutput, riscv_check_mapping_symbols, (char *) 0);
+  bfd_map_over_sections (stdoutput, riscv_check_mapping_symbols, NULL);
   elf_adjust_symtab ();
 }
 
@@ -5750,35 +5886,6 @@ s_variant_cc (int ignored ATTRIBUTE_UNUSED)
   elfsym = elf_symbol_from (bfdsym);
   gas_assert (elfsym);
   elfsym->internal_elf_sym.st_other |= STO_RISCV_VARIANT_CC;
-}
-
-/* Same as elf_copy_symbol_attributes, but without copying st_other.
-   This is needed so RISC-V specific st_other values can be independently
-   specified for an IFUNC resolver (that is called by the dynamic linker)
-   and the symbol it resolves (aliased to the resolver).  In particular,
-   if a function symbol has special st_other value set via directives,
-   then attaching an IFUNC resolver to that symbol should not override
-   the st_other setting.  Requiring the directive on the IFUNC resolver
-   symbol would be unexpected and problematic in C code, where the two
-   symbols appear as two independent function declarations.  */
-
-void
-riscv_elf_copy_symbol_attributes (symbolS *dest, symbolS *src)
-{
-  struct elf_obj_sy *srcelf = symbol_get_obj (src);
-  struct elf_obj_sy *destelf = symbol_get_obj (dest);
-  /* If size is unset, copy size from src.  Because we don't track whether
-     .size has been used, we can't differentiate .size dest, 0 from the case
-     where dest's size is unset.  */
-  if (!destelf->size && S_GET_SIZE (dest) == 0)
-    {
-      if (srcelf->size)
-	{
-	  destelf->size = XNEW (expressionS);
-	  *destelf->size = *srcelf->size;
-	}
-      S_SET_SIZE (dest, S_GET_SIZE (src));
-    }
 }
 
 /* RISC-V pseudo-ops table.  */

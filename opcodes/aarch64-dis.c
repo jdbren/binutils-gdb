@@ -2746,7 +2746,16 @@ do_special_decoding (aarch64_inst *inst)
     {
       idx = select_operand_for_sf_field_coding (inst->opcode);
       value = extract_field (FLD_sf, inst->value, 0);
-      inst->operands[idx].qualifier = get_greg_qualifier_from_value (value);
+      if (inst->opcode->iclass == fprcvtfloat2int
+	  || inst->opcode->iclass == fprcvtint2float)
+	{
+	  if (value == 0)
+	    inst->operands[idx].qualifier = AARCH64_OPND_QLF_S_S;
+	  else
+	    inst->operands[idx].qualifier = AARCH64_OPND_QLF_S_D;
+	}
+      else
+	inst->operands[idx].qualifier = get_greg_qualifier_from_value (value);
       if (inst->operands[idx].qualifier == AARCH64_OPND_QLF_ERR)
 	return 0;
       if ((inst->opcode->flags & F_N)
@@ -2828,6 +2837,23 @@ do_special_decoding (aarch64_inst *inst)
 					   candidates);
 	  inst->operands[idx].qualifier
 	    = get_qualifier_from_partial_encoding (value, candidates, mask);
+	}
+    }
+
+  if (inst->opcode->flags & F_LSFE_SZ)
+    {
+      value = extract_field (FLD_ldst_size, inst->value, 0);
+
+      if (value > 0x3)
+	return 0;
+
+      for (int i = 0;
+	   aarch64_operands[inst->operands[i].type].op_class != AARCH64_OPND_CLASS_ADDRESS;
+	   i++)
+	{
+	  inst->operands[i].qualifier = get_sreg_qualifier_from_value (value);
+	  if (inst->operands[i].qualifier == AARCH64_OPND_QLF_ERR)
+	    return 0;
 	}
     }
 
@@ -3577,8 +3603,23 @@ aarch64_decode_variant_using_iclass (aarch64_inst *inst)
       variant = extract_field (FLD_SVE_sz2, inst->value, 0);
       break;
 
+    case sve_size_sd3:
+      variant = extract_field (FLD_SVE_sz3, inst->value, 0);
+      break;
+
+    case sve_size_sd4:
+      variant = extract_field (FLD_SVE_sz4, inst->value, 0);
+      break;
+
     case sve_size_hsd2:
       i = extract_field (FLD_SVE_size, inst->value, 0);
+      if (i < 1)
+	return false;
+      variant = i - 1;
+      break;
+
+    case sve_size_hsd3:
+      i = extract_field (FLD_len, inst->value, 0);
       if (i < 1)
 	return false;
       variant = i - 1;

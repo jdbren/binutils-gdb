@@ -1,6 +1,6 @@
 /* Reading code for .debug_names
 
-   Copyright (C) 2023-2024 Free Software Foundation, Inc.
+   Copyright (C) 2023-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -114,11 +114,12 @@ struct mapped_debug_names_reader
 
   gdb::unordered_map<ULONGEST, index_val> abbrev_map;
 
-  /* Even though the scanning of .debug_names and creation of the cooked index
-     entries is done serially, we create multiple shards so that the
-     finalization step can be parallelized.  The shards are filled in a round
-     robin fashion.  */
-  std::vector<cooked_index_shard_up> shards;
+  /* Even though the scanning of .debug_names and creation of the
+     cooked index entries is done serially, we create multiple shards
+     so that the finalization step can be parallelized.  The shards
+     are filled in a round robin fashion.  It's convenient to use a
+     result object rather than an actual shard.  */
+  std::vector<cooked_index_worker_result> indices;
 
   /* Next shard to insert an entry in.  */
   int next_shard = 0;
@@ -240,7 +241,7 @@ mapped_debug_names_reader::scan_one_entry (const char *name,
 		continue;
 	      }
 	  }
-	  per_cu = per_objfile->per_bfd->get_cu (ull);
+	  per_cu = per_objfile->per_bfd->get_unit (ull);
 	  break;
 	case DW_IDX_type_unit:
 	  /* Don't crash on bad data.  */
@@ -254,7 +255,7 @@ mapped_debug_names_reader::scan_one_entry (const char *name,
 	    }
 	  {
 	    int nr_cus = per_objfile->per_bfd->all_comp_units.size ();
-	    per_cu = per_objfile->per_bfd->get_cu (nr_cus + ull);
+	    per_cu = per_objfile->per_bfd->get_unit (nr_cus + ull);
 	  }
 	  break;
 	case DW_IDX_die_offset:
@@ -262,7 +263,7 @@ mapped_debug_names_reader::scan_one_entry (const char *name,
 	  /* In a per-CU index (as opposed to a per-module index), index
 	     entries without CU attribute implicitly refer to the single CU.  */
 	  if (per_cu == NULL)
-	    per_cu = per_objfile->per_bfd->get_cu (0);
+	    per_cu = per_objfile->per_bfd->get_unit (0);
 	  break;
 	case DW_IDX_parent:
 	  parent = ull;
@@ -290,11 +291,11 @@ mapped_debug_names_reader::scan_one_entry (const char *name,
   if (per_cu != nullptr)
     {
       *result
-	= shards[next_shard]->add (die_offset, (dwarf_tag) indexval.dwarf_tag,
+	= indices[next_shard].add (die_offset, (dwarf_tag) indexval.dwarf_tag,
 				   flags, lang, name, nullptr, per_cu);
 
       ++next_shard;
-      if (next_shard == shards.size ())
+      if (next_shard == indices.size ())
 	next_shard = 0;
 
       entry_pool_offsets_to_entries.emplace (offset_in_entry_pool, *result);
@@ -414,29 +415,27 @@ void
 cooked_index_worker_debug_names::do_reading ()
 {
   complaint_interceptor complaint_handler;
-  std::vector<gdb_exception> exceptions;
-  try
+
+  /* Arbitrarily put all exceptions into the first result.  */
+  m_map.indices[0].catch_error ([&] ()
     {
       m_map.scan_all_names ();
-    }
-  catch (const gdb_exception &exc)
+    });
+
+  bool first = true;
+  for (auto &iter : m_map.indices)
     {
-      exceptions.push_back (std::move (exc));
+      if (first)
+	{
+	  iter.done_reading (complaint_handler.release ());
+	  first = false;
+	}
+      else
+	iter.done_reading ({});
     }
 
-  m_results.emplace_back (nullptr,
-			  complaint_handler.release (),
-			  std::move (exceptions),
-			  parent_map ());
-
-  dwarf2_per_bfd *per_bfd = m_per_objfile->per_bfd;
-  cooked_index *table
-    = (gdb::checked_static_cast<cooked_index *>
-       (per_bfd->index_table.get ()));
-
-  /* Note that this code never uses IS_PARENT_DEFERRED, so it is safe
-     to pass nullptr here.  */
-  table->set_contents (std::move (m_map.shards), &m_warnings, nullptr);
+  m_results = std::move (m_map.indices);
+  done_reading ();
 
   bfd_thread_cleanup ();
 }
@@ -467,7 +466,7 @@ check_signatured_type_table_from_debug_names
 
       bool found = false;
       for (; j < nr_cus_tus; j++)
-	if (per_bfd->get_cu (j)->sect_off == sect_off)
+	if (per_bfd->get_unit (j)->sect_off == sect_off)
 	  {
 	    found = true;
 	    break;
@@ -478,7 +477,7 @@ check_signatured_type_table_from_debug_names
 		     " ignoring .debug_names."));
 	  return false;
 	}
-      per_bfd->all_comp_units_index_tus.push_back (per_bfd->get_cu (j));
+      per_bfd->all_comp_units_index_tus.push_back (per_bfd->get_unit (j));
     }
   return true;
 }
@@ -720,7 +719,7 @@ check_cus_from_debug_names_list (dwarf2_per_bfd *per_bfd,
 			      map.dwarf5_byte_order));
 	  bool found = false;
 	  for (; j < nr_cus; j++)
-	    if (per_bfd->get_cu (j)->sect_off == sect_off)
+	    if (per_bfd->get_unit (j)->sect_off == sect_off)
 	      {
 		found = true;
 		break;
@@ -731,7 +730,7 @@ check_cus_from_debug_names_list (dwarf2_per_bfd *per_bfd,
 			 " ignoring .debug_names."));
 	      return false;
 	    }
-	  per_bfd->all_comp_units_index_cus.push_back (per_bfd->get_cu (j));
+	  per_bfd->all_comp_units_index_cus.push_back (per_bfd->get_unit (j));
 	}
       return true;
     }
@@ -750,7 +749,7 @@ check_cus_from_debug_names_list (dwarf2_per_bfd *per_bfd,
 			 (map.cu_table_reordered + i * map.offset_size,
 			  map.offset_size,
 			  map.dwarf5_byte_order));
-      if (sect_off != per_bfd->get_cu (i)->sect_off)
+      if (sect_off != per_bfd->get_unit (i)->sect_off)
 	{
 	  warning (_("Section .debug_names has incorrect entry in CU table,"
 		     " ignoring .debug_names."));
@@ -838,24 +837,26 @@ do_dwarf2_read_debug_names (dwarf2_per_objfile *per_objfile)
     }
 
   per_bfd->debug_aranges.read (per_objfile->objfile);
-  addrmap_mutable addrmap;
+
+  /* There is a single address map for the whole index (coming from
+     .debug_aranges).  We only need to install it into a single shard
+     for it to get searched by cooked_index.  So, we make the first
+     result object here, so we can store the addrmap, then move it
+     into place later.  */
+  cooked_index_worker_result first;
   deferred_warnings warnings;
   read_addrmap_from_aranges (per_objfile, &per_bfd->debug_aranges,
-			     &addrmap, &warnings);
+			     first.get_addrmap (), &warnings);
   warnings.emit ();
 
   const auto n_workers
     = std::max<std::size_t> (gdb::thread_pool::g_thread_pool->thread_count (),
 			     1);
 
-  /* Create as many index shard as there are worker threads.  */
-  for (int i = 0; i < n_workers; ++i)
-    map.shards.emplace_back (std::make_unique<cooked_index_shard> ());
-
-  /* There is a single address map for the whole index (coming from
-     .debug_aranges).  We only need to install it into a single shard for it to
-     get searched by cooked_index.  */
-  map.shards[0]->install_addrmap (&addrmap);
+  /* Create as many index shard as there are worker threads,
+     preserving the first one.  */
+  map.indices.push_back (std::move (first));
+  map.indices.resize (n_workers);
 
   auto cidn = (std::make_unique<cooked_index_worker_debug_names>
 	       (per_objfile, std::move (map)));

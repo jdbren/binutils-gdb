@@ -1,6 +1,6 @@
 /* Symbol table lookup for the GNU debugger, GDB.
 
-   Copyright (C) 1986-2024 Free Software Foundation, Inc.
+   Copyright (C) 1986-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -60,7 +60,6 @@
 #include "cp-abi.h"
 #include "cp-support.h"
 #include "observable.h"
-#include "solist.h"
 #include "macrotab.h"
 #include "macroscope.h"
 
@@ -2162,13 +2161,6 @@ lookup_symbol_aux (const char *name, symbol_name_match_type match_type,
 	("domain name = \"%s\", language = \"%s\")",
 	 domain_name (domain).c_str (), language_str (language));
     }
-
-  /* Make sure we do something sensible with is_a_field_of_this, since
-     the callers that set this parameter to some non-null value will
-     certainly use it later.  If we don't set it, the contents of
-     is_a_field_of_this are undefined.  */
-  if (is_a_field_of_this != NULL)
-    memset (is_a_field_of_this, 0, sizeof (*is_a_field_of_this));
 
   langdef = language_def (language);
 
@@ -4499,7 +4491,7 @@ info_sources_filter::matches (const char *fullname) const
       switch (m_match_type)
 	{
 	case match_on::DIRNAME:
-	  dirname = ldirname (fullname);
+	  dirname = gdb_ldirname (fullname);
 	  to_match = dirname.c_str ();
 	  break;
 	case match_on::BASENAME:
@@ -4714,7 +4706,7 @@ info_sources_worker (struct ui_out *uiout,
 	  if (uiout->is_mi_like_p ())
 	    {
 	      const char *debug_info_state;
-	      if (objfile_has_symbols (objfile))
+	      if (objfile->has_symbols ())
 		{
 		  if (debug_fully_readin)
 		    debug_info_state = "fully-read";
@@ -4730,7 +4722,7 @@ info_sources_worker (struct ui_out *uiout,
 	      if (!debug_fully_readin)
 		uiout->text ("(Full debug information has not yet been read "
 			     "for this file.)\n");
-	      if (!objfile_has_symbols (objfile))
+	      if (!objfile->has_symbols ())
 		uiout->text ("(Objfile has no debug information.)\n");
 	      uiout->text ("\n");
 	    }
@@ -6206,8 +6198,6 @@ default_collect_symbol_completion_matches_break_on
   if (current_language->macro_expansion () == macro_expansion_c
       && code == TYPE_CODE_UNDEF)
     {
-      gdb::unique_xmalloc_ptr<struct macro_scope> scope;
-
       /* This adds a macro's name to the current completion list.  */
       auto add_macro_name = [&] (const char *macro_name,
 				 const macro_definition *,
@@ -6225,10 +6215,9 @@ default_collect_symbol_completion_matches_break_on
 	 resulting expression will be evaluated at "file:line" -- but
 	 at there does not seem to be a way to detect this at
 	 completion time.  */
-      scope = default_macro_scope ();
-      if (scope)
-	macro_for_each_in_scope (scope->file, scope->line,
-				 add_macro_name);
+      macro_scope scope = default_macro_scope ();
+      if (scope.is_valid ())
+	macro_for_each_in_scope (scope.file, scope.line, add_macro_name);
 
       /* User-defined macros are always visible.  */
       macro_for_each (macro_user_macros, add_macro_name);
@@ -6413,7 +6402,7 @@ add_partial_filename_data::operator() (const char *filename,
    program.  */
 
 completion_list
-make_source_files_completion_list (const char *text, const char *word)
+make_source_files_completion_list (const char *text)
 {
   size_t text_len = strlen (text);
   completion_list list;
@@ -6439,7 +6428,7 @@ make_source_files_completion_list (const char *text, const char *word)
 		{
 		  /* This file matches for a completion; add it to the current
 		     list of matches.  */
-		  add_filename_to_list (s->filename, text, word, &list);
+		  add_filename_to_list (s->filename, text, text, &list);
 		}
 	      else
 		{
@@ -6451,7 +6440,7 @@ make_source_files_completion_list (const char *text, const char *word)
 		  if (base_name != s->filename
 		      && !filenames_seen.seen (base_name)
 		      && filename_ncmp (base_name, text, text_len) == 0)
-		    add_filename_to_list (base_name, text, word, &list);
+		    add_filename_to_list (base_name, text, text, &list);
 		}
 	    }
 	}
@@ -6459,7 +6448,7 @@ make_source_files_completion_list (const char *text, const char *word)
 
   datum.filename_seen_cache = &filenames_seen;
   datum.text = text;
-  datum.word = word;
+  datum.word = text;
   datum.text_len = text_len;
   datum.list = &list;
   map_symbol_filenames (datum, false /*need_fullname*/);
@@ -6550,7 +6539,7 @@ find_main_name (void)
      language.  It is easy to guaranty this with Ada, since we use a
      special symbol generated only when the main in Ada to find the name
      of the main procedure.  It is difficult however to see how this can
-     be guarantied for languages such as C, for instance.  This suggests
+     be guaranteed for languages such as C, for instance.  This suggests
      that order of call for these methods becomes important, which means
      a more complicated approach.  */
   new_main_name = ada_main_name ();
@@ -6997,11 +6986,8 @@ info_module_subcommand (bool quiet, const char *module_regexp,
 
   const char *last_filename = "";
   const symbol *last_module_symbol = nullptr;
-  for (const module_symbol_search &ms : module_symbols)
+  for (const auto &[p, q] : module_symbols)
     {
-      const symbol_search &p = ms.first;
-      const symbol_search &q = ms.second;
-
       gdb_assert (q.symbol != nullptr);
 
       if (last_module_symbol != p.symbol)
@@ -7120,9 +7106,7 @@ info_module_var_func_command_completer (struct cmd_list_element *ignore,
 
 
 
-void _initialize_symtab ();
-void
-_initialize_symtab ()
+INIT_GDB_FILE (symtab)
 {
   cmd_list_element *c;
 

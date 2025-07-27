@@ -1,6 +1,6 @@
 /* Manages interpreters for GDB, the GNU debugger.
 
-   Copyright (C) 2000-2024 Free Software Foundation, Inc.
+   Copyright (C) 2000-2025 Free Software Foundation, Inc.
 
    Written by Jim Ingham <jingham@apple.com> of Apple Computer, Inc.
 
@@ -575,9 +575,7 @@ interps_notify_memory_changed (inferior *inf, CORE_ADDR addr, ssize_t len,
 }
 
 /* This just adds the "interpreter-exec" command.  */
-void _initialize_interpreter ();
-void
-_initialize_interpreter ()
+INIT_GDB_FILE (interpreter)
 {
   struct cmd_list_element *c;
 

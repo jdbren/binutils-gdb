@@ -4456,8 +4456,6 @@ const struct xcoff_dwsect_name xcoff_dwsect_names[] = {
 #define _bfd_xcoff_get_section_contents _bfd_generic_get_section_contents
 
 /* For copy private data entry points.  */
-#define _bfd_xcoff_init_private_section_data \
-  _bfd_generic_init_private_section_data
 #define _bfd_xcoff_bfd_copy_private_bfd_data \
   _bfd_xcoff_copy_private_bfd_data
 #define _bfd_xcoff_bfd_merge_private_bfd_data \
@@ -4584,7 +4582,6 @@ static const struct xcoff_backend_data_rec bfd_xcoff_backend_data =
       xcoff_ppc_relocate_section,
       coff_rtype_to_howto,
       NULL,			/* _bfd_coff_adjust_symndx */
-      _bfd_generic_link_add_one_symbol,
       coff_link_output_has_begun,
       coff_final_link_postscript,
       NULL			/* print_pdata.  */
@@ -4774,7 +4771,6 @@ static const struct xcoff_backend_data_rec bfd_pmac_xcoff_backend_data =
       xcoff_ppc_relocate_section,
       coff_rtype_to_howto,
       NULL,			/* _bfd_coff_adjust_symndx */
-      _bfd_generic_link_add_one_symbol,
       coff_link_output_has_begun,
       coff_final_link_postscript,
       NULL			/* print_pdata.  */

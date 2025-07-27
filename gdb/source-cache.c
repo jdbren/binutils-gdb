@@ -1,5 +1,5 @@
 /* Cache of styled source file text
-   Copyright (C) 2018-2024 Free Software Foundation, Inc.
+   Copyright (C) 2018-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -364,7 +364,8 @@ source_cache::ensure (struct symtab *s)
       if (!styled_p)
 	{
 	  std::optional<std::string> ext_contents;
-	  ext_contents = ext_lang_colorize (fullname, contents);
+	  ext_contents = ext_lang_colorize (fullname, contents,
+					    s->language ());
 	  if (ext_contents.has_value ())
 	    {
 	      contents = std::move (*ext_contents);
@@ -510,9 +511,7 @@ static void extract_lines_test ()
 }
 #endif
 
-void _initialize_source_cache ();
-void
-_initialize_source_cache ()
+INIT_GDB_FILE (source_cache)
 {
   add_cmd ("source-cache", class_maintenance, source_cache_flush_command,
 	   _("Force gdb to flush its source code cache."),

@@ -1,6 +1,6 @@
 /* Target description support for GDB.
 
-   Copyright (C) 2006-2024 Free Software Foundation, Inc.
+   Copyright (C) 2006-2025 Free Software Foundation, Inc.
 
    Contributed by CodeSourcery.
 
@@ -1880,9 +1880,7 @@ maintenance_check_xml_descriptions (const char *dir, int from_tty)
 	      (long) selftests::xml_tdesc.size (), failed);
 }
 
-void _initialize_target_descriptions ();
-void
-_initialize_target_descriptions ()
+INIT_GDB_FILE (target_descriptions)
 {
   cmd_list_element *cmd;
 

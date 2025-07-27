@@ -205,7 +205,7 @@ elf_file_symbol (const char *s)
   if (name_length > strlen (S_GET_NAME (sym)))
     {
       obstack_grow (&notes, s, name_length + 1);
-      S_SET_NAME (sym, (const char *) obstack_finish (&notes));
+      S_SET_NAME (sym, obstack_finish (&notes));
     }
   else
     strcpy ((char *) S_GET_NAME (sym), s);
@@ -481,7 +481,7 @@ match_section (const asection *sec, const struct elf_section_match *match)
 static bool
 get_section_by_match (bfd *abfd ATTRIBUTE_UNUSED, asection *sec, void *inf)
 {
-  struct elf_section_match *match = (struct elf_section_match *) inf;
+  struct elf_section_match *match = inf;
   const char *gname = match->group_name;
   const char *group_name = elf_group_name (sec);
 
@@ -492,13 +492,6 @@ get_section_by_match (bfd *abfd ATTRIBUTE_UNUSED, asection *sec, void *inf)
 	  && match_section (sec, match));
 }
 
-static void
-free_section_idx (void *ent)
-{
-  string_tuple_t *tuple = ent;
-  free ((char *) tuple->value);
-}
-
 /* Go look in section lists kept per group for SEC_NAME with
    properties given by MATCH.  If info for the group named by
    MATCH->GROUP_NAME has been initialised, set GROUP_IDX.  */
@@ -506,24 +499,24 @@ free_section_idx (void *ent)
 static asection *
 group_section_find (const struct elf_section_match *match,
 		    const char *sec_name,
-		    unsigned int **group_idx)
+		    unsigned int *group_idx)
 {
   if (!groups.indexes)
     {
       groups.num_group = 0;
       groups.head = NULL;
       groups.indexes = htab_create_alloc (16, hash_string_tuple, eq_string_tuple,
-					  free_section_idx, notes_calloc, NULL);
-      *group_idx = NULL;
+					  NULL, notes_calloc, NULL);
+      *group_idx = ~0u;
       return NULL;
     }
 
-  *group_idx = str_hash_find (groups.indexes, match->group_name);
-  if (*group_idx == NULL)
+  *group_idx = str_hash_find_int (groups.indexes, match->group_name);
+  if (*group_idx == ~0u)
     return NULL;
 
   asection *s;
-  for (s = groups.head[**group_idx]; s != NULL; s = elf_next_in_group (s))
+  for (s = groups.head[*group_idx]; s != NULL; s = elf_next_in_group (s))
     if ((s->name == sec_name
 	 || strcmp (s->name, sec_name) == 0)
 	&& match_section (s, match))
@@ -537,12 +530,12 @@ group_section_find (const struct elf_section_match *match,
 static void
 group_section_insert (const struct elf_section_match *match,
 		      asection *sec,
-		      unsigned int **group_idx)
+		      unsigned int *group_idx)
 {
-  if (*group_idx != NULL)
+  if (*group_idx != ~0u)
     {
-      elf_next_in_group (sec) = groups.head[**group_idx];
-      groups.head[**group_idx] = sec;
+      elf_next_in_group (sec) = groups.head[*group_idx];
+      groups.head[*group_idx] = sec;
       return;
     }
 
@@ -553,14 +546,8 @@ group_section_insert (const struct elf_section_match *match,
   groups.num_group += 1;
 
   /* We keep the index into groups.head rather than the entry address
-     because groups.head may be realloc'd, and because str_hash values
-     are a void* we make a copy of the index.  Strictly speaking there
-     is no guarantee that void* can represent any int value, so doing
-     without the indirection by casting an int or even uintptr_t may
-     for example lose lsbs of the value.  */
-  unsigned int *idx_ptr = XNEW (unsigned int);
-  *idx_ptr = i;
-  str_hash_insert (groups.indexes, match->group_name, idx_ptr, 0);
+     because groups.head may be realloc'd.  */
+  str_hash_insert_int (groups.indexes, match->group_name, i, 0);
 }
 
 /* Handle the .section pseudo-op.  This code supports two different
@@ -622,12 +609,12 @@ change_section (const char *name,
 
   obj_elf_section_change_hook ();
 
-  unsigned int *group_idx = NULL;
+  unsigned int group_idx = ~0u;
   if (match_p->group_name)
     old_sec = group_section_find (match_p, name, &group_idx);
   else
     old_sec = bfd_get_section_by_name_if (stdoutput, name, get_section_by_match,
-					  (void *) match_p);
+					  match_p);
   if (old_sec)
     {
       sec = old_sec;
@@ -781,7 +768,7 @@ change_section (const char *name,
 	  || startswith (name, ".note.gnu"))
 	flags |= SEC_ELF_OCTETS;
     }
-  
+
   if (old_sec == NULL)
     {
       symbolS *secsym;
@@ -955,13 +942,12 @@ obj_elf_parse_section_letters (char *str, size_t len,
 	      if (ISDIGIT (*str))
 		{
 		  char * end;
-		  struct elf_backend_data *bed;
+		  const struct elf_backend_data *bed;
 		  bfd_vma numeric_flags = strtoul (str, &end, 0);
 
 		  attr |= numeric_flags;
 
-		  bed = (struct elf_backend_data *)
-		    get_elf_backend_data (stdoutput);
+		  bed = get_elf_backend_data (stdoutput);
 
 		  if (bed->elf_osabi == ELFOSABI_NONE
 		      || bed->elf_osabi == ELFOSABI_STANDALONE
@@ -1151,7 +1137,7 @@ elf_set_group_name (asection *sec, const char *gname)
 		    & SEC_ASSEMBLER_SHF_MASK);
   match.flags = bfd_section_flags (sec) & SEC_ASSEMBLER_SECTION_ID;
 
-  unsigned int *group_idx;
+  unsigned int group_idx;
   if (!group_section_find (&match, sec->name, &group_idx))
     group_section_insert (&match, sec, &group_idx);
 }
@@ -1176,6 +1162,15 @@ obj_elf_attach_to_group (int dummy ATTRIBUTE_UNUSED)
     }
   elf_set_group_name (now_seg, gname);
 }
+
+/* Handle section related directives.
+
+   Note on support for SFrame sections: These are generally expected to be
+   generated by the assembler.  However, this function permits their direct
+   creation by the user.  At the moment though, we go no extra mile by adding
+   an explicit @sframe for SHT_GNU_SFRAME (using the numeric value of section
+   type should suffice); Nor do we implement any outright refusal for
+   non-supported targets via ELFOSABI-specific checks.  */
 
 void
 obj_elf_section (int push)
@@ -1242,7 +1237,7 @@ obj_elf_section (int push)
       if (push && ISDIGIT (*input_line_pointer))
 	{
 	  /* .pushsection has an optional subsection.  */
-	  new_subsection = (subsegT) get_absolute_expression ();
+	  new_subsection = get_absolute_expression ();
 
 	  SKIP_WHITESPACE ();
 
@@ -1473,7 +1468,7 @@ obj_elf_section (int push)
 		  char *t = input_line_pointer;
 		  match.sh_info = strtoul (input_line_pointer,
 					&input_line_pointer, 0);
-		  if (match.sh_info == (unsigned int) -1)
+		  if (match.sh_info == -1u)
 		    {
 		      as_warn (_("unsupported mbind section info: %s"), t);
 		      match.sh_info = 0;
@@ -1510,8 +1505,7 @@ obj_elf_section (int push)
 			      errno = 0;
 			      id = strtoul (input_line_pointer,
 					    &input_line_pointer, 0);
-			      overflow = (id == (unsigned long) -1
-					  && errno == ERANGE);
+			      overflow = id == -1ul && errno == ERANGE;
 			    }
 			  else
 			    {
@@ -1520,7 +1514,7 @@ obj_elf_section (int push)
 				 (const char **) &input_line_pointer, 0);
 			      overflow = id == ~(bfd_vma) 0;
 			    }
-			  if (overflow || id > (unsigned int) -1)
+			  if (overflow || id > -1u)
 			    {
 			      char *linefeed, saved_char = 0;
 			      if ((linefeed = strchr (t, '\n')) != NULL)
@@ -1627,7 +1621,7 @@ obj_elf_bss (int i ATTRIBUTE_UNUSED)
   obj_elf_section_change_hook ();
 
   temp = get_absolute_expression ();
-  subseg_set (bss_section, (subsegT) temp);
+  subseg_set (bss_section, temp);
   demand_empty_rest_of_line ();
 
 #ifdef md_elf_section_change_hook
@@ -1701,7 +1695,7 @@ obj_elf_subsection (int ignore ATTRIBUTE_UNUSED)
   obj_elf_section_change_hook ();
 
   temp = get_absolute_expression ();
-  subseg_set (now_seg, (subsegT) temp);
+  subseg_set (now_seg, temp);
   demand_empty_rest_of_line ();
 
 #ifdef md_elf_section_change_hook
@@ -2273,39 +2267,25 @@ elf_obj_symbol_new_hook (symbolS *symbolP)
 #endif
 }
 
-/* Deduplicate size expressions.  We might get into trouble with
-   multiple freeing or use after free if we leave them pointing to the
-   same expressionS.  */
-
+/* If size is unset, copy size from src.  Because we don't track whether
+   .size has been used, we can't differentiate .size dest, 0 from the case
+   where dest's size is unset.  */
 void
-elf_obj_symbol_clone_hook (symbolS *newsym, symbolS *orgsym ATTRIBUTE_UNUSED)
+elf_copy_symbol_size (symbolS *dest, symbolS *src)
 {
-  struct elf_obj_sy *newelf = symbol_get_obj (newsym);
-  if (newelf->size)
+  struct elf_obj_sy *srcelf = symbol_get_obj (src);
+  struct elf_obj_sy *destelf = symbol_get_obj (dest);
+  if (!destelf->size && S_GET_SIZE (dest) == 0)
     {
-      expressionS *exp = XNEW (expressionS);
-      *exp = *newelf->size;
-      newelf->size = exp;
+      destelf->size = srcelf->size;
+      S_SET_SIZE (dest, S_GET_SIZE (src));
     }
 }
 
 void
 elf_copy_symbol_attributes (symbolS *dest, symbolS *src)
 {
-  struct elf_obj_sy *srcelf = symbol_get_obj (src);
-  struct elf_obj_sy *destelf = symbol_get_obj (dest);
-  /* If size is unset, copy size from src.  Because we don't track whether
-     .size has been used, we can't differentiate .size dest, 0 from the case
-     where dest's size is unset.  */
-  if (!destelf->size && S_GET_SIZE (dest) == 0)
-    {
-      if (srcelf->size)
-	{
-	  destelf->size = XNEW (expressionS);
-	  *destelf->size = *srcelf->size;
-	}
-      S_SET_SIZE (dest, S_GET_SIZE (src));
-    }
+  elf_copy_symbol_size (dest, src);
   /* Don't copy visibility.  */
   S_SET_OTHER (dest, (ELF_ST_VISIBILITY (S_GET_OTHER (dest))
 		      | (S_GET_OTHER (src) & ~ELF_ST_VISIBILITY (-1))));
@@ -2404,12 +2384,11 @@ obj_elf_size (int ignore ATTRIBUTE_UNUSED)
   if (exp.X_op == O_constant)
     {
       S_SET_SIZE (sym, exp.X_add_number);
-      xfree (symbol_get_obj (sym)->size);
       symbol_get_obj (sym)->size = NULL;
     }
   else
     {
-      symbol_get_obj (sym)->size = XNEW (expressionS);
+      symbol_get_obj (sym)->size = notes_alloc (sizeof (exp));
       *symbol_get_obj (sym)->size = exp;
     }
 
@@ -2719,7 +2698,7 @@ set_additional_section_info (bfd *abfd,
   if (!strcmp ("str", sec->name + strlen (sec->name) - 3))
     return;
 
-  name = concat (sec->name, "str", NULL);
+  name = concat (sec->name, "str", (const char *) NULL);
   strsec = bfd_get_section_by_name (abfd, name);
   if (strsec)
     strsz = bfd_section_size (strsec);
@@ -2805,7 +2784,6 @@ elf_frob_symbol (symbolS *symp, int *puntp)
 	    as_warn (_(".size expression for %s "
 		       "does not evaluate to a constant"), S_GET_NAME (symp));
 	}
-      free (sy_obj->size);
       sy_obj->size = NULL;
     }
 
@@ -3336,7 +3314,7 @@ const struct format_ops elf_format_ops =
 #endif
   elf_obj_read_begin_hook,
   elf_obj_symbol_new_hook,
-  elf_obj_symbol_clone_hook,
+  0,
   elf_adjust_symtab
 };
 

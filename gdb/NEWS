@@ -35,6 +35,19 @@
   a -h or --help option, which prints each options and a brief
   description.
 
+* On systems that support linker namespaces, the output of the command
+  "info sharedlibraries" may add one more column, NS, which identifies the
+  namespace into which the library was loaded, if more than one namespace
+  is active.
+
+* New built-in convenience variables $_active_linker_namespaces and
+  $_linker_namespace.  These show the number of active linker
+  namespaces, and the namespace to which the current location belongs to.
+  In systems that don't support linker namespaces, these always return
+  the integers 1 and 0 respectively.
+
+* Add record full support for rv64gc architectures
+
 * New commands
 
 maintenance check psymtabs
@@ -43,11 +56,38 @@ maintenance check psymtabs
 maintenance check symtabs
   Renamed from maintenance check-symtabs
 
+maintenance canonicalize
+  Show the canonical form of a C++ name.
+
+maintenance set console-translation-mode <binary|text>
+maintenance show console-translation-mode
+  Controls the translation mode of GDB stdout/stderr.  MS-Windows only.  In
+  binary mode, no translation is done.  In text mode, a Line Feed is
+  translated into a Carriage Return-Line Feed combination.
+
 set riscv numeric-register-names on|off
 show riscv numeric-register-names
   Controls whether GDB refers to risc-v registers by their numeric names
   (e.g 'x1') or their abi names (e.g. 'ra').
   Defaults to 'off', matching the old behaviour (abi names).
+
+set style emoji on|off|auto
+show style emoji
+  Controls whether GDB can display emoji.  The default is "auto",
+  which means emoji will be displayed in some situations when
+  the host charset is UTF-8.
+
+set style warning-prefix STRING
+set style error-prefix STRING
+  These commands control the prefix that is printed before warnings
+  and errors, respectively.  This functionality is intended for use
+  with emoji display, and so the prefixes are only displayed if emoji
+  styling is enabled.
+
+info linker-namespaces
+info linker-namespaces [[N]]
+  Print information about the given linker namespace (identified as N),
+  or about all the namespaces if no argument is given.
 
 * Changed commands
 
@@ -56,7 +96,41 @@ info sharedlibrary
   command are now for the full memory range allocated to the shared
   library.
 
+info threads [-gid] [-stopped] [-running] [ID]...
+  If no threads match the given ID(s) or filter options, GDB now prints
+
+    No threads matched.
+
+  without printing the provided arguments.  The newly added '-stopped'
+  option makes GDB list the stopped threads only.  Similarly,
+  '-running' makes GDB list the running threads only.  If both options
+  are given together, both stopped and running threads are listed.
+  These new flags can be useful to get a reduced list when there is a
+  large number of threads.
+
+* GDB-internal Thread Local Storage (TLS) support
+
+  ** Linux targets for the x86_64, aarch64, ppc64, s390x, and riscv
+     architectures now have GDB-internal support for TLS address
+     lookup in addition to that traditionally provided by the
+     libthread_db library.  This internal support works for programs
+     linked against either the GLIBC or MUSL C libraries.  For
+     programs linked against MUSL, this new internal support provides
+     new debug functionality, allowing access to TLS variables, due to
+     the fact that MUSL does not implement the libthread_db library.
+     Internal TLS support is also useful in cross-debugging
+     situations, debugging statically linked binaries, and debugging
+     programs linked against GLIBC 2.33 and earlier, but which are not
+     linked against libpthread.
+
+  ** The command 'maint set force-internal-tls-address-lookup on' may
+     be used to force the internal TLS lookup mechanisms to be used.
+     Otherwise, TLS lookup via libthread_db will still be preferred,
+     when available.
+
 * Python API
+
+  ** GDB no longer supports Python versions less than 3.4.
 
   ** New class gdb.Color for dealing with colors.
 
@@ -74,12 +148,40 @@ info sharedlibrary
      when output is going to standard output, and False when output is
      going to a string.
 
+  ** Setting the documentation string (__doc__) of a gdb.Parameter
+     sub-class to the empty string, means GDB will only display the
+     set_doc or show_doc strings in the set/show help output.
+
+  ** New gdb.ParameterPrefix class.  This can be used to create 'set'
+     and 'show' gdb.Command prefixes, suitable for use with new
+     gdb.Parameters.
+
+  ** Prefix commands (gdb.Command sub-classes) that don't have an
+     invoke method will now behave like builtin prefix commands when
+     invoked without a sub-command name.  This means printing the help
+     text for all sub-commands, unless the prefix command is a 'show'
+     command, in which case the value of all sub-commands is printed.
+
+  ** New gdb.warning() function that takes a string and prints it as a
+     warning, with GDB's standard 'warning' prefix.
+
 * Guile API
 
   ** New type <gdb:color> for dealing with colors.
 
   ** New constant PARAM_COLOR represents color type of a value
      of a <gdb:parameter> object.  Parameter's value is <gdb::color> instance.
+
+  ** Eliding the #:doc string from make-parameter now means that GDB
+     will use a default documentation string.  Setting #:doc to the
+     empty string for make-parameter means GDB will only display the
+     #:set_doc or #:show_doc strings in the set/show help output.
+
+  ** Prefix commands (using make-command) that don't have a #:invoke
+     property will now behave like builtin prefix commands when
+     invoked without a sub-command name.  This means printing the help
+     text for all sub-commands, unless the prefix command is a 'show'
+     command, in which case the value of all sub-commands is printed.
 
 * New remote packets
 
@@ -89,6 +191,11 @@ binary-upload in qSupported reply
   stub doesn't report this feature supported, then GDB will not use
   the 'x' packet.
 
+vFile:lstat
+  Return information about files on the remote system.  Like
+  vFile:stat but if the filename is a symbolic link, return
+  information about the link itself, the file the link refers to.
+
 * Changed remote packets
 
 qXfer:threads:read
@@ -96,6 +203,11 @@ qXfer:threads:read
   attribute for a thread element.  The attribute indicates what GDB
   should print as the target ID of the thread, for example in the
   "info threads" command or when switching to the thread.
+
+vFile:stat
+  Previously, gdbserver incorrectly implemented this packet using
+  lstat rather than stat.  This has now been corrected.  The
+  documentation has also been clarified.
 
 * MI changes
 
@@ -115,6 +227,16 @@ qXfer:threads:read
 * A new configure option was added, allowing support for the compile
   subsystem to be disabled at configure time, in the form of
   --disable-gdb-compile.
+
+* A new configure option was added, allowing support for DWARF debug
+  information to be disabled at configure time.  The flag is
+  --disable-gdb-dwarf-support.
+
+* A new configure option was added, allowing support for mdebug/ecoff
+  debug information to be disabled at configure time.  The flag to do
+  that is --disable-gdb-mdebug-support.
+
+* The Alpha target now supports target descriptions.
 
 *** Changes in GDB 16
 
@@ -7491,7 +7613,7 @@ for DW_OP_piece is still missing).
 
 A number of long standing bugs that caused GDB to die while starting a
 Java application have been fixed.  GDB's Java support is now
-considered "useable".
+considered "usable".
 
 * GNU/Linux support for fork, vfork, and exec.
 

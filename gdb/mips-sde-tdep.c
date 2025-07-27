@@ -1,6 +1,6 @@
 /* Target-dependent code for SDE on MIPS processors.
 
-   Copyright (C) 2014-2024 Free Software Foundation, Inc.
+   Copyright (C) 2014-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -254,9 +254,7 @@ mips_sde_init_abi (struct gdbarch_info info, struct gdbarch *gdbarch)
   frame_base_append_sniffer (gdbarch, mips_sde_frame_base_sniffer);
 }
 
-void _initialize_mips_sde_tdep ();
-void
-_initialize_mips_sde_tdep ()
+INIT_GDB_FILE (mips_sde_tdep)
 {
   gdbarch_register_osabi_sniffer (bfd_arch_mips,
 				  bfd_target_elf_flavour,

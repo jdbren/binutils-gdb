@@ -1,6 +1,6 @@
 /* Self tests for ui_file_style
 
-   Copyright (C) 2018-2024 Free Software Foundation, Inc.
+   Copyright (C) 2018-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -100,9 +100,7 @@ run_tests ()
 } /* namespace style */
 } /* namespace selftests */
 
-void _initialize_style_selftest ();
-void
-_initialize_style_selftest ()
+INIT_GDB_FILE (style_selftest)
 {
   selftests::register_test ("style",
 			    selftests::style::run_tests);

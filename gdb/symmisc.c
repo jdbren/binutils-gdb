@@ -1,6 +1,6 @@
 /* Do various things to symbol tables (other than lookup), for GDB.
 
-   Copyright (C) 1986-2024 Free Software Foundation, Inc.
+   Copyright (C) 1986-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -1051,9 +1051,7 @@ maintenance_info_line_tables (const char *regexp, int from_tty)
 
 /* Do early runtime initializations.  */
 
-void _initialize_symmisc ();
-void
-_initialize_symmisc ()
+INIT_GDB_FILE (symmisc)
 {
   add_cmd ("symbols", class_maintenance, maintenance_print_symbols, _("\
 Print dump of current symbol definitions.\n\

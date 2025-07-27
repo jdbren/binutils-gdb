@@ -1,6 +1,6 @@
 /* General utility routines for GDB, the GNU debugger.
 
-   Copyright (C) 1986-2024 Free Software Foundation, Inc.
+   Copyright (C) 1986-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -54,7 +54,6 @@
 #include "top.h"
 #include "ui.h"
 #include "main.h"
-#include "solist.h"
 
 #include "inferior.h"
 
@@ -177,6 +176,7 @@ vwarning (const char *string, va_list args)
 	  target_terminal::ours_for_output ();
 	}
       gdb_puts (warning_pre_print, gdb_stderr);
+      print_warning_prefix (gdb_stderr);
       gdb_puts (_("warning: "), gdb_stderr);
       gdb_vprintf (gdb_stderr, string, args);
       gdb_printf (gdb_stderr, "\n");
@@ -382,7 +382,7 @@ internal_vproblem (struct internal_problem *problem,
 #endif
 
   /* Create a string containing the full error/warning message.  Need
-     to call query with this full string, as otherwize the reason
+     to call query with this full string, as otherwise the reason
      (error/warning) and question become separated.  Format using a
      style similar to a compiler error message.  Include extra detail
      so that the user knows that they are living on the edge.  */
@@ -1401,21 +1401,28 @@ pager_file::emit_style_escape (const ui_file_style &style)
     {
       m_applied_style = style;
       if (m_paging)
-	m_stream->emit_style_escape (style);
+	{
+	  /* Previous style changes will have been sent to m_stream via
+	     escape sequences encoded in the m_wrap_buffer.  As a result,
+	     the m_stream->m_applied_style will not have been updated.
+
+	     If we now use m_stream->emit_style_escape, then the required
+	     style might not actually be emitted as the requested style
+	     might happen to match the out of date value in
+	     m_stream->m_applied_style.
+
+	     Instead, send the style change directly using m_stream->puts.
+
+	     However, we track what style is currently applied to the
+	     underlying stream in m_stream_style, this is updated whenever
+	     m_wrap_buffer is flushed to the underlying stream.  And so, if
+	     the style we are applying matches what we know is currently
+	     applied to the underlying stream, then we can skip sending
+	     this style to the stream.  */
+	  this->set_stream_style (m_applied_style);
+	}
       else
 	m_wrap_buffer.append (style.to_ansi ());
-    }
-}
-
-/* See pager.h.  */
-
-void
-pager_file::reset_style ()
-{
-  if (can_emit_style_escape ())
-    {
-      m_applied_style = ui_file_style ();
-      m_wrap_buffer.append (m_applied_style.to_ansi ());
     }
 }
 
@@ -1436,8 +1443,8 @@ pager_file::prompt_for_continue ()
 
   scoped_restore save_paging = make_scoped_restore (&m_paging, true);
 
-  /* Clear the current styling.  */
-  m_stream->emit_style_escape (ui_file_style ());
+  /* Clear the current styling on ourselves and the managed stream.  */
+  this->emit_style_escape (ui_file_style ());
 
   if (annotation_level > 1)
     m_stream->puts (("\n\032\032pre-prompt-for-continue\n"));
@@ -1520,6 +1527,7 @@ pager_file::flush_wrap_buffer ()
   if (!m_paging && !m_wrap_buffer.empty ())
     {
       m_stream->puts (m_wrap_buffer.c_str ());
+      m_stream_style = m_applied_style;
       m_wrap_buffer.clear ();
     }
 }
@@ -1736,7 +1744,8 @@ pager_file::puts (const char *linebuffer)
 		     current applied style to how it was at the WRAP_COLUMN
 		     location.  */
 		  m_applied_style = m_wrap_style;
-		  m_stream->emit_style_escape (ui_file_style ());
+		  this->set_stream_style (ui_file_style ());
+
 		  /* If we aren't actually wrapping, don't output
 		     newline -- if chars_per_line is right, we
 		     probably just overflowed anyway; if it's wrong,
@@ -1764,7 +1773,7 @@ pager_file::puts (const char *linebuffer)
 
 		  /* Having finished inserting the wrapping we should
 		     restore the style as it was at the WRAP_COLUMN.  */
-		  m_stream->emit_style_escape (m_wrap_style);
+		  this->set_stream_style (m_wrap_style);
 
 		  /* The WRAP_BUFFER will still contain content, and that
 		     content might set some alternative style.  Restore
@@ -1779,7 +1788,7 @@ pager_file::puts (const char *linebuffer)
 		  m_wrap_column = 0;	/* And disable fancy wrap */
 		}
 	      else if (did_paginate)
-		m_stream->emit_style_escape (save_style);
+		this->emit_style_escape (save_style);
 	    }
 	}
 
@@ -1800,7 +1809,7 @@ void
 pager_file::write (const char *buf, long length_buf)
 {
   /* We have to make a string here because the pager uses
-     skip_ansi_escape, which requires NUL-termination.  */
+     examine_ansi_escape, which requires NUL-termination.  */
   std::string str (buf, length_buf);
   this->puts (str.c_str ());
 }
@@ -3344,7 +3353,7 @@ gdb_argv_as_array_view_test ()
    argument.  */
 
 std::string
-ldirname (const char *filename)
+gdb_ldirname (const char *filename)
 {
   std::string dirname;
   const char *base = lbasename (filename);
@@ -3384,51 +3393,6 @@ parse_pid_to_attach (const char *args)
     error (_("Illegal process-id: %s."), args);
 
   return pid;
-}
-
-/* Substitute all occurrences of string FROM by string TO in *STRINGP.  *STRINGP
-   must come from xrealloc-compatible allocator and it may be updated.  FROM
-   needs to be delimited by IS_DIR_SEPARATOR or DIRNAME_SEPARATOR (or be
-   located at the start or end of *STRINGP.  */
-
-void
-substitute_path_component (char **stringp, const char *from, const char *to)
-{
-  char *string = *stringp, *s;
-  const size_t from_len = strlen (from);
-  const size_t to_len = strlen (to);
-
-  for (s = string;;)
-    {
-      s = strstr (s, from);
-      if (s == NULL)
-	break;
-
-      if ((s == string || IS_DIR_SEPARATOR (s[-1])
-	   || s[-1] == DIRNAME_SEPARATOR)
-	  && (s[from_len] == '\0' || IS_DIR_SEPARATOR (s[from_len])
-	      || s[from_len] == DIRNAME_SEPARATOR))
-	{
-	  char *string_new;
-
-	  string_new
-	    = (char *) xrealloc (string, (strlen (string) + to_len + 1));
-
-	  /* Relocate the current S pointer.  */
-	  s = s - string + string_new;
-	  string = string_new;
-
-	  /* Replace from by to.  */
-	  memmove (&s[to_len], &s[from_len], strlen (&s[from_len]) + 1);
-	  memcpy (s, to, to_len);
-
-	  s += to_len;
-	}
-      else
-	s++;
-    }
-
-  *stringp = string;
 }
 
 #ifdef HAVE_WAITPID
@@ -3752,9 +3716,7 @@ test_assign_set_return_if_changed ()
 }
 #endif
 
-void _initialize_utils ();
-void
-_initialize_utils ()
+INIT_GDB_FILE (utils)
 {
   add_setshow_uinteger_cmd ("width", class_support, &chars_per_line, _("\
 Set number of characters where GDB should wrap lines of its output."), _("\

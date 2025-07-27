@@ -1,6 +1,6 @@
 /* Self tests for GDB command definitions for GDB, the GNU debugger.
 
-   Copyright (C) 2019-2024 Free Software Foundation, Inc.
+   Copyright (C) 2019-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -219,9 +219,7 @@ command_structure_invariants_tests ()
 
 } /* namespace selftests */
 
-void _initialize_command_def_selftests ();
-void
-_initialize_command_def_selftests ()
+INIT_GDB_FILE (command_def_selftests)
 {
   selftests::register_test
     ("help_doc_invariants",

@@ -1,6 +1,6 @@
 /* Support for complaint handling during symbol reading in GDB.
 
-   Copyright (C) 1990-2024 Free Software Foundation, Inc.
+   Copyright (C) 1990-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -188,9 +188,7 @@ test_complaints ()
 } /* namespace selftests */
 #endif /* GDB_SELF_TEST */
 
-void _initialize_complaints ();
-void
-_initialize_complaints ()
+INIT_GDB_FILE (complaints)
 {
   add_setshow_zinteger_cmd ("complaints", class_support, 
 			    &stop_whining, _("\

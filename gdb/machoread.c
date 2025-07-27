@@ -1,5 +1,5 @@
 /* Darwin support for GDB, the GNU debugger.
-   Copyright (C) 2008-2024 Free Software Foundation, Inc.
+   Copyright (C) 2008-2025 Free Software Foundation, Inc.
 
    Contributed by AdaCore.
 
@@ -164,7 +164,7 @@ macho_symtab_read (minimal_symbol_reader &reader,
     S_NO_SO,
 
     /* First SO read.  Introduce an SO section, and may be followed by a second
-       SO.  The SO section should contain onl debugging symbols.  */
+       SO.  The SO section should contain only debugging symbols.  */
     S_FIRST_SO,
 
     /* Second non-null SO found, just after the first one.  Means that the first
@@ -940,9 +940,7 @@ static const struct sym_fns macho_sym_fns = {
   NULL,				/* sym_get_probes */
 };
 
-void _initialize_machoread ();
-void
-_initialize_machoread ()
+INIT_GDB_FILE (machoread)
 {
   add_symtab_fns (bfd_target_mach_o_flavour, &macho_sym_fns);
 

@@ -1,6 +1,6 @@
 /* GDB CLI commands.
 
-   Copyright (C) 2000-2024 Free Software Foundation, Inc.
+   Copyright (C) 2000-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -833,7 +833,7 @@ echo_command (const char *text, int from_tty)
 	  gdb_printf ("%c", c);
       }
 
-  gdb_stdout->reset_style ();
+  gdb_stdout->emit_style_escape (ui_file_style ());
 
   /* Force this output to appear now.  */
   gdb_flush (gdb_stdout);
@@ -950,6 +950,21 @@ static void
 shell_command (const char *arg, int from_tty)
 {
   shell_escape (arg, from_tty);
+}
+
+/* Completion for the shell command.  Currently, this just uses filename
+   completion, but we could, potentially, complete command names from $PATH
+   for the first word, which would make this even more shell like.  */
+
+static void
+shell_command_completer (struct cmd_list_element *ignore,
+			 completion_tracker &tracker,
+			 const char *text, const char * /* word */)
+{
+  tracker.set_use_custom_word_point (true);
+  const char *word
+    = advance_to_filename_maybe_quoted_complete_word_point (tracker, text);
+  filename_maybe_quoted_completer (ignore, tracker, text, word);
 }
 
 static void
@@ -1178,8 +1193,32 @@ pipe_command_completer (struct cmd_list_element *ignore,
       return;
     }
 
-  /* We're past the delimiter.  What follows is a shell command, which
-     we don't know how to complete.  */
+  /* We're past the delimiter now, or at least, DELIM points to the
+     delimiter string.  Update TEXT to point to the start of whatever
+     appears after the delimiter.  */
+  text = skip_spaces (delim + strlen (delimiter));
+
+  /* We really are past the delimiter now, so offer completions.  This is
+     like GDB's "shell" command, currently we only offer filename
+     completion, but in the future this could be improved by offering
+     completion of command names from $PATH.
+
+     What we don't do here is offer completions for the empty string.  It
+     is assumed that the first word after the delimiter is going to be a
+     command name from $PATH, not a filename, so if the user has typed
+     nothing (yet) and tries to complete, there's no point offering a list
+     of files from the current directory.
+
+     Once the user has started to type something though, then we do start
+     offering filename completions.  */
+  if (*text == '\0')
+    return;
+
+  tracker.set_use_custom_word_point (true);
+  tracker.advance_custom_word_point_by (text - org_text);
+  const char *word
+    = advance_to_filename_maybe_quoted_complete_word_point (tracker, text);
+  filename_maybe_quoted_completer (ignore, tracker, text, word);
 }
 
 /* Helper for the list_command function.  Prints the lines around (and
@@ -2578,9 +2617,7 @@ shell_internal_fn (struct gdbarch *gdbarch,
     return value::allocate_optimized_out (int_type);
 }
 
-void _initialize_cli_cmds ();
-void
-_initialize_cli_cmds ()
+INIT_GDB_FILE (cli_cmds)
 {
   struct cmd_list_element *c;
 
@@ -2803,7 +2840,7 @@ the previous command number shown."),
     = add_com ("shell", class_support, shell_command, _("\
 Execute the rest of the line as a shell command.\n\
 With no arguments, run an inferior shell."));
-  set_cmd_completer (shell_cmd, deprecated_filename_completer);
+  set_cmd_completer_handle_brkchars (shell_cmd, shell_command_completer);
 
   add_com_alias ("!", shell_cmd, class_support, 0);
 

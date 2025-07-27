@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright (C) 2023-2024 Free Software Foundation, Inc.
+# Copyright (C) 2023-2025 Free Software Foundation, Inc.
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 3 of the License, or
@@ -74,6 +74,7 @@ target_boards=(
     cc-with-gnu-debuglink
     debug-types
     dwarf4-gdb-index
+    dwarf5-fission-debug-types
     dwarf64
     fission
     fission-dwp
@@ -191,7 +192,7 @@ do_tests ()
 
     # Run make check.
     make $maketarget \
-	 RUNTESTFLAGS="${rtf[*]} ${tests[*]}" \
+	 RUNTESTFLAGS="${rtf[*]}" TESTS="${tests[*]}" \
 	 2>&1 \
 	| summary
 
@@ -215,7 +216,7 @@ do_tests ()
 	cp gdb.sum gdb.log "$dir"
 
 	# Record the 'make check' command to enable easy re-running.
-	echo "make $maketarget RUNTESTFLAGS=\"${rtf[*]} ${tests[*]}\"" \
+	echo "make $maketarget RUNTESTFLAGS=\"${rtf[*]}\" TESTS=\"${tests[*]}\"" \
 	     > "$dir/make-check.sh"
     fi
 }

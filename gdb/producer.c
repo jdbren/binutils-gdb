@@ -1,6 +1,6 @@
 /* Producer string parsers for GDB.
 
-   Copyright (C) 2012-2024 Free Software Foundation, Inc.
+   Copyright (C) 2012-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -335,9 +335,7 @@ Version 18.0 Beta";
 }
 #endif
 
-void _initialize_producer ();
-void
-_initialize_producer ()
+INIT_GDB_FILE (producer)
 {
 #if defined GDB_SELF_TEST
   selftests::register_test

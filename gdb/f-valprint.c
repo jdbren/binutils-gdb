@@ -1,6 +1,6 @@
 /* Support for printing Fortran values for GDB, the GNU debugger.
 
-   Copyright (C) 1993-2024 Free Software Foundation, Inc.
+   Copyright (C) 1993-2025 Free Software Foundation, Inc.
 
    Contributed by Motorola.  Adapted from the C definitions by Farooq Butt
    (fmbutt@engage.sps.mot.com), additionally worked over by Stan Shebs.
@@ -719,9 +719,7 @@ info_common_command (const char *comname, int from_tty)
     }
 }
 
-void _initialize_f_valprint ();
-void
-_initialize_f_valprint ()
+INIT_GDB_FILE (f_valprint)
 {
   add_info ("common", info_common_command,
 	    _("Print out the values contained in a Fortran COMMON block."));

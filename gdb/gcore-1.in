@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-#   Copyright (C) 2003-2024 Free Software Foundation, Inc.
+#   Copyright (C) 2003-2025 Free Software Foundation, Inc.
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -34,11 +34,11 @@ data_directory_opt=()
 
 function print_usage() {
     prefix="Usage: $0"
-    paddin=$(printf '%*s' ${#prefix})
+    padding=$(printf '%*s' ${#prefix})
 
     echo "$prefix [-h|--help] [-v|--version]"
-    echo "$paddin [-a] [-o prefix] [-d data-directory]"
-    echo "$paddin pid1 [pid2...pidN]"
+    echo "$padding [-a] [-o prefix] [-d data-directory]"
+    echo "$padding pid1 [pid2...pidN]"
 }
 
 function print_try_help() {

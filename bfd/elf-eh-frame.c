@@ -802,6 +802,9 @@ _bfd_elf_parse_eh_frame (bfd *abfd, struct bfd_link_info *info,
 		switch (*aug++)
 		  {
 		  case 'B':
+		  case 'G':
+		    if (abfd->arch_info->arch != bfd_arch_aarch64)
+		      goto unrecognized;
 		    break;
 		  case 'L':
 		    REQUIRE (read_byte (&buf, end, &cie->lsda_encoding));
@@ -843,6 +846,7 @@ _bfd_elf_parse_eh_frame (bfd *abfd, struct bfd_link_info *info,
 		      REQUIRE (skip_bytes (&buf, end, per_width));
 		    }
 		    break;
+		  unrecognized:
 		  default:
 		    /* Unrecognized augmentation. Better bail out.  */
 		    goto free_no_table;
@@ -2506,7 +2510,7 @@ write_dwarf_eh_frame_hdr (bfd *abfd, struct bfd_link_info *info)
   /* FIXME: octets_per_byte.  */
   if (!bfd_set_section_contents (abfd, sec->output_section, contents,
 				 (file_ptr) sec->output_offset,
-				 sec->size))
+				 size))
     retval = false;
  out:
   free (contents);

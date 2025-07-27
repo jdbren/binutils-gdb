@@ -1,4 +1,4 @@
-# Copyright 2016-2024 Free Software Foundation, Inc.
+# Copyright 2016-2025 Free Software Foundation, Inc.
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -39,6 +39,8 @@ standard_testfile
 # Multiple inferiors are needed, therefore only native gdb and extended
 # gdbserver modes are supported.
 require !use_gdb_stub
+
+require allow_multi_inferior_tests
 
 set compile_options "debug pthreads"
 if {[build_executable $testfile.exp $testfile ${srcfile} ${compile_options}] == -1} {
@@ -985,7 +987,7 @@ proc_with_prefix test_mi_stack_select_frame { mode } {
 
 	# Now use the '-stack-select-frame' command with the --frame
 	# option, this verifies that even when the frame GDB would
-	# swith to is the same as the frame specified with --frame, an
+	# switch to is the same as the frame specified with --frame, an
 	# event is still sent to the CLI.
 
 	set cli_re [make_cli_re $mode -1 -1 0]

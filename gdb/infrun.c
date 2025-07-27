@@ -1,7 +1,7 @@
 /* Target-struct-independent code to start (run) and stop an inferior
    process.
 
-   Copyright (C) 1986-2024 Free Software Foundation, Inc.
+   Copyright (C) 1986-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -58,7 +58,6 @@
 #include "target-descriptions.h"
 #include "target-dcache.h"
 #include "terminal.h"
-#include "solist.h"
 #include "gdbsupport/event-loop.h"
 #include "thread-fsm.h"
 #include "gdbsupport/enum-flags.h"
@@ -68,7 +67,6 @@
 #include "gdbsupport/scope-exit.h"
 #include "gdbsupport/forward-scope-exit.h"
 #include "gdbsupport/gdb_select.h"
-#include <unordered_map>
 #include "async-event.h"
 #include "gdbsupport/selftest.h"
 #include "scoped-mock-context.h"
@@ -473,6 +471,7 @@ holding the child stopped.  Try \"set %ps\" or \"%ps\".\n"),
 
   inferior *parent_inf = current_inferior ();
   inferior *child_inf = nullptr;
+  bool child_has_new_pspace = false;
 
   gdb_assert (parent_inf->thread_waiting_for_vfork_done == nullptr);
 
@@ -537,6 +536,7 @@ holding the child stopped.  Try \"set %ps\" or \"%ps\".\n"),
 	  else
 	    {
 	      child_inf->pspace = new program_space (new_address_space ());
+	      child_has_new_pspace = true;
 	      child_inf->aspace = child_inf->pspace->aspace;
 	      child_inf->removable = true;
 	      clone_program_space (child_inf->pspace, parent_inf->pspace);
@@ -626,6 +626,7 @@ holding the child stopped.  Try \"set %ps\" or \"%ps\".\n"),
       else
 	{
 	  child_inf->pspace = new program_space (new_address_space ());
+	  child_has_new_pspace = true;
 	  child_inf->aspace = child_inf->pspace->aspace;
 	  child_inf->removable = true;
 	  child_inf->symfile_flags = SYMFILE_NO_READ;
@@ -724,7 +725,8 @@ holding the child stopped.  Try \"set %ps\" or \"%ps\".\n"),
 	maybe_restore.emplace ();
 
       switch_to_thread (*child_inf->threads ().begin ());
-      post_create_inferior (0);
+
+      post_create_inferior (0, child_has_new_pspace);
     }
 
   return false;
@@ -1322,6 +1324,7 @@ follow_exec (ptid_t ptid, const char *exec_file_target)
      we don't want those to be satisfied by the libraries of the
      previous incarnation of this process.  */
   no_shared_libraries (current_program_space);
+  current_program_space->unset_solib_ops ();
 
   inferior *execing_inferior = current_inferior ();
   inferior *following_inferior;
@@ -1378,6 +1381,8 @@ follow_exec (ptid_t ptid, const char *exec_file_target)
      registers.  */
   target_find_description ();
 
+  current_program_space->set_solib_ops
+    (gdbarch_make_solib_ops (following_inferior->arch ()));
   gdb::observers::inferior_execd.notify (execing_inferior, following_inferior);
 
   breakpoint_re_set ();
@@ -3819,7 +3824,7 @@ start_remote (int from_tty)
   /* Now that the inferior has stopped, do any bookkeeping like
      loading shared libraries.  We want to do this before normal_stop,
      so that the displayed frame is up to date.  */
-  post_create_inferior (from_tty);
+  post_create_inferior (from_tty, true);
 
   normal_stop ();
 }
@@ -3972,7 +3977,8 @@ delete_just_stopped_threads_single_step_breakpoints (void)
 
 void
 print_target_wait_results (ptid_t waiton_ptid, ptid_t result_ptid,
-			   const struct target_waitstatus &ws)
+			   const struct target_waitstatus &ws,
+			   process_stratum_target *proc_target)
 {
   infrun_debug_printf ("target_wait (%s [%s], status) =",
 		       waiton_ptid.to_string ().c_str (),
@@ -3981,6 +3987,20 @@ print_target_wait_results (ptid_t waiton_ptid, ptid_t result_ptid,
 		       result_ptid.to_string ().c_str (),
 		       target_pid_to_str (result_ptid).c_str ());
   infrun_debug_printf ("  %s", ws.to_string ().c_str ());
+
+  if (proc_target != nullptr)
+    infrun_debug_printf ("  from target %d (%s)",
+			 proc_target->connection_number,
+			 proc_target->shortname ());
+}
+
+/* Wrapper for print_target_wait_results above for convenience.  */
+
+static void
+print_target_wait_results (ptid_t waiton_ptid,
+			   const execution_control_state &ecs)
+{
+  print_target_wait_results (waiton_ptid, ecs.ptid, ecs.ws, ecs.target);
 }
 
 /* Select a thread at random, out of those which are resumed and have
@@ -4332,7 +4352,8 @@ prepare_for_detach (void)
 	  event.ptid = do_target_wait_1 (inf, pid_ptid, &event.ws, 0);
 
 	  if (debug_infrun)
-	    print_target_wait_results (pid_ptid, event.ptid, event.ws);
+	    print_target_wait_results (pid_ptid, event.ptid, event.ws,
+				       event.target);
 
 	  handle_one (event);
 	}
@@ -4388,7 +4409,7 @@ wait_for_inferior (inferior *inf)
       ecs.target = inf->process_target ();
 
       if (debug_infrun)
-	print_target_wait_results (minus_one_ptid, ecs.ptid, ecs.ws);
+	print_target_wait_results (minus_one_ptid, ecs);
 
       /* Now figure out what to do with the result of the result.  */
       handle_inferior_event (&ecs);
@@ -4669,7 +4690,7 @@ fetch_inferior_event ()
       switch_to_target_no_thread (ecs.target);
 
     if (debug_infrun)
-      print_target_wait_results (minus_one_ptid, ecs.ptid, ecs.ws);
+      print_target_wait_results (minus_one_ptid, ecs);
 
     /* If an error happens while handling the event, propagate GDB's
        knowledge of the executing state to the frontend/user running
@@ -5232,7 +5253,8 @@ poll_one_curr_target (struct target_waitstatus *ws)
   event_ptid = target_wait (minus_one_ptid, ws, TARGET_WNOHANG);
 
   if (debug_infrun)
-    print_target_wait_results (minus_one_ptid, event_ptid, *ws);
+    print_target_wait_results (minus_one_ptid, event_ptid, *ws,
+			       current_inferior ()->process_target ());
 
   return event_ptid;
 }
@@ -9444,7 +9466,7 @@ struct stop_context
 
   ptid_t ptid;
 
-  /* If stopp for a thread event, this is the thread that caused the
+  /* If stopped for a thread event, this is the thread that caused the
      stop.  */
   thread_info_ref thread;
 
@@ -10515,9 +10537,7 @@ infrun_thread_ptid_changed ()
 
 #endif /* GDB_SELF_TEST */
 
-void _initialize_infrun ();
-void
-_initialize_infrun ()
+INIT_GDB_FILE (infrun)
 {
   struct cmd_list_element *c;
 

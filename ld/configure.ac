@@ -313,7 +313,7 @@ esac],
 [case "${target}" in
   # Enable gnu hash only on GNU targets, but not mips
   mips*-*-*) enable_default_hash_style=sysv ;;
-  *-*-gnu* | *-*-linux* | *-*-nacl*) enable_default_hash_style=both ;;
+  *-*-gnu* | *-*-linux*) enable_default_hash_style=both ;;
   *) enable_default_hash_style=sysv ;;
 esac])
 
@@ -389,7 +389,6 @@ fi
 
 ALL_LINGUAS="bg da de es fi fr ga id it ja pt_BR ru sr sv tr uk vi zh_CN zh_TW"
 ZW_GNU_GETTEXT_SISTER_DIR
-AM_PO_SUBDIRS
 
 AC_EXEEXT
 
@@ -414,7 +413,7 @@ AC_SUBST(NATIVE_LIB_DIRS)
 AC_CHECK_HEADERS(fcntl.h elf-hints.h limits.h inttypes.h stdint.h \
 		 sys/file.h sys/mman.h sys/param.h sys/stat.h sys/time.h \
 		 sys/types.h unistd.h)
-AC_CHECK_FUNCS(close glob lseek mkstemp open realpath waitpid)
+AC_CHECK_FUNCS(close getrusage glob lseek mkstemp open realpath waitpid)
 
 BFD_BINARY_FOPEN
 
@@ -495,11 +494,11 @@ do
       EMUL=$targ_emul
     fi
 
-    if test x${enable_64_bit_bfd} = xno; then
+    if test x${have_64_bit_bfd} = xno; then
       . ${srcdir}/../bfd/config.bfd
     fi
 
-    if test x${enable_64_bit_bfd} = xyes; then
+    if test x${have_64_bit_bfd} = xyes; then
       targ_extra_emuls="$targ_extra_emuls $targ64_extra_emuls"
       targ_extra_libpath="$targ_extra_libpath $targ64_extra_libpath"
     fi
@@ -686,7 +685,7 @@ AC_SUBST(TDIRS)
 AM_SUBST_NOTMAKE(TDIRS)
 
 if test x${all_targets} = xtrue; then
-  if test x${enable_64_bit_bfd} = xyes; then
+  if test x${have_64_bit_bfd} = xyes; then
     EMULATION_OFILES='$(ALL_EMULATIONS) $(ALL_64_EMULATIONS)'
     EMUL_EXTRA_OFILES='$(ALL_EMUL_EXTRA_OFILES) $(ALL_64_EMUL_EXTRA_OFILES)'
   else

@@ -1,6 +1,6 @@
 /* General GDB/Guile code.
 
-   Copyright (C) 2014-2024 Free Software Foundation, Inc.
+   Copyright (C) 2014-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -827,9 +827,7 @@ message == an error message without a stack will be printed."),
 			&set_guile_list, &show_guile_list);
 }
 
-void _initialize_guile ();
-void
-_initialize_guile ()
+INIT_GDB_FILE (guile)
 {
   install_gdb_commands ();
 }

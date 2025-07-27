@@ -1,6 +1,6 @@
 /* Target-dependent code for the HP PA-RISC architecture.
 
-   Copyright (C) 1986-2024 Free Software Foundation, Inc.
+   Copyright (C) 1986-2025 Free Software Foundation, Inc.
 
    Contributed by the Center for Software Science at the
    University of Utah (pa-gdb-bugs@cs.utah.edu).
@@ -3119,9 +3119,7 @@ hppa_dump_tdep (struct gdbarch *gdbarch, struct ui_file *file)
   gdb_printf (file, "elf = %s\n", tdep->is_elf ? "yes" : "no");
 }
 
-void _initialize_hppa_tdep ();
-void
-_initialize_hppa_tdep ()
+INIT_GDB_FILE (hppa_tdep)
 {
   gdbarch_register (bfd_arch_hppa, hppa_gdbarch_init, hppa_dump_tdep);
 

@@ -1,6 +1,6 @@
 # Dynamic architecture support for GDB, the GNU debugger.
 
-# Copyright (C) 1998-2024 Free Software Foundation, Inc.
+# Copyright (C) 1998-2025 Free Software Foundation, Inc.
 
 # This file is part of GDB.
 
@@ -1431,12 +1431,12 @@ Function(
     invalid=False,
 )
 
-Value(
-    comment="Vtable of solib operations functions.",
-    type="const solib_ops *",
-    name="so_ops",
-    predefault="&solib_target_so_ops",
-    printer="host_address_to_string (gdbarch->so_ops)",
+Function(
+    comment="Return a newly-allocated solib_ops object capable of providing the solibs for this architecture.",
+    type="solib_ops_up",
+    name="make_solib_ops",
+    params=[],
+    predefault="make_target_solib_ops",
     invalid=False,
 )
 

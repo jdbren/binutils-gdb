@@ -1,6 +1,6 @@
 /* Target-dependent code for the Motorola 68000 series.
 
-   Copyright (C) 1990-2024 Free Software Foundation, Inc.
+   Copyright (C) 1990-2025 Free Software Foundation, Inc.
 
    This file is part of GDB.
 
@@ -1365,9 +1365,7 @@ m68k_osabi_sniffer (bfd *abfd)
   return osabi;
 }
 
-void _initialize_m68k_tdep ();
-void
-_initialize_m68k_tdep ()
+INIT_GDB_FILE (m68k_tdep)
 {
   gdbarch_register (bfd_arch_m68k, m68k_gdbarch_init, m68k_dump_tdep);
 
