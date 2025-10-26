@@ -655,6 +655,18 @@ case "${targ}" in
     targ_defvec=i386_elf32_vec
     targ_selvecs="iamcu_elf32_vec"
     ;;
+  i[3-7]86-*-lilac*)
+    targ_defvec=i386_elf32_vec
+    targ_selvecs=
+    targ64_selvecs=x86_64_elf64_vec
+    ;;
+#ifdef BFD64
+  x86_64-*-lilac*)
+    targ_defvec=x86_64_elf64_vec
+    targ_selvecs=i386_elf32_vec
+    want64=true
+    ;;
+#endif
   i[3-7]86-*-linux-*)
     targ_defvec=i386_elf32_vec
     targ_selvecs="iamcu_elf32_vec i386_pei_vec"

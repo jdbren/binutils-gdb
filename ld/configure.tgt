@@ -416,6 +416,11 @@ i[3-7]86-*-freebsd* | i[3-7]86-*-kfreebsd*-gnu)
 i[3-7]86-*-gnu*)	targ_emul=elf_i386
 			targ_extra_emuls=elf_iamcu
 			;;
+i[3-7]86-*-lilac*)
+			targ_emul=elf_i386_lilac
+			targ_extra_emuls=elf_i386
+			targ64_extra_emuls="elf_x86_64_lilac elf_x86_64"
+			;;
 i[3-7]86-*-msdos*)	targ_emul=i386msdos
 			targ_extra_emuls=i386aout
 			targ_extra_ofiles=
@@ -1051,6 +1056,10 @@ x86_64-*-freebsd* | x86_64-*-kfreebsd*-gnu)
 			    | sed -e 's/x86_64/i386/'`
 			tdir_elf_i386=`echo ${targ_alias} \
 			    | sed -e 's/x86_64/i386/'`
+			;;
+x86_64-*-lilac*)
+			targ_emul=elf_x86_64_lilac
+			targ_extra_emuls="elf_i386_lilac elf_x86_64 elf_i386"
 			;;
 x86_64-*-pe | x86_64-*-pep) targ_emul=i386pep ;
 			targ_extra_emuls=i386pe ;
