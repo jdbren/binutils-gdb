@@ -152,7 +152,6 @@ endif
 
 # These all start with e so 'make clean' can find them.
 ALL_EMULATION_SOURCES = \
-	eelf_i386_lilac.c \
 	eaix5ppc.c \
 	eaix5rs6.c \
 	eaixppc.c \
@@ -238,6 +237,7 @@ ALL_EMULATION_SOURCES = \
 	eelf32ip2k.c \
 	eelf32iq10.c \
 	eelf32iq2000.c \
+	eelf_i386_lilac.c \
 	eelf32lm32.c \
 	eelf32lm32fd.c \
 	eelf32lppc.c \
