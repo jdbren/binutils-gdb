@@ -126,8 +126,6 @@ esac
 generic_target=${cpu_type}-$vendor-$os
 # Note: This table is alpha-sorted, please try to keep it that way.
 case ${generic_target} in
-  i386-*-lilac*)                        fmt=elf;;
-
   aarch64*-*-elf*)			fmt=elf;;
   aarch64*-*-fuchsia*)			fmt=elf;;
   aarch64*-*-haiku*)			fmt=elf em=haiku ;;
@@ -238,6 +236,7 @@ case ${generic_target} in
   i386-*-knetbsd*-gnu | \
   i386-*-netbsd* | \
   i386-*-openbsd*)			fmt=elf em=nbsd ;;
+  i386-*-lilac*)			fmt=elf;;
   i386-*-linux-*)			fmt=elf em=linux
     case ${cpu}-${os} in
       x86_64*-linux-gnux32)		arch=x86_64:32 ;;
