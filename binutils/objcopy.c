@@ -2529,7 +2529,6 @@ merge_gnu_build_notes (bfd *          abfd,
 
   /* Reconstruct the ELF notes.  */
   bfd_byte *     new_contents;
-  bfd_byte *     old;
   bfd_byte *     new;
   bfd_vma        prev_start = 0;
   bfd_vma        prev_end = 0;
@@ -2537,12 +2536,8 @@ merge_gnu_build_notes (bfd *          abfd,
   /* Not sure how, but the notes might grow in size.
      (eg see PR 1774507).  Allow for this here.  */
   new = new_contents = xmalloc (size * 2);
-  for (pnote = pnotes, old = contents;
-       pnote < pnotes_end;
-       pnote ++)
+  for (pnote = pnotes; pnote < pnotes_end; pnote ++)
     {
-      bfd_size_type note_size = 12 + pnote->padded_namesz + pnote->note.descsz;
-
       if (! is_deleted_note (pnote))
 	{
 	  /* Create the note, potentially using the
@@ -2585,8 +2580,6 @@ merge_gnu_build_notes (bfd *          abfd,
 	      prev_end = pnote->end;
 	    }
 	}
-
-      old += note_size;
     }
 
 #if DEBUG_MERGE
@@ -2668,7 +2661,8 @@ set_long_section_mode (bfd *output_bfd, bfd *input_bfd, enum long_section_name_h
    Returns TRUE upon success, FALSE otherwise.  */
 
 static bool
-copy_object (bfd *ibfd, bfd *obfd, const bfd_arch_info_type *input_arch)
+copy_object (bfd *ibfd, bfd *obfd, const bfd_arch_info_type *input_arch,
+	     bool target_defaulted)
 {
   bfd_vma start;
   long symcount;
@@ -2819,7 +2813,7 @@ copy_object (bfd *ibfd, bfd *obfd, const bfd_arch_info_type *input_arch)
       imach = 0;
     }
   if (!bfd_set_arch_mach (obfd, iarch, imach)
-      && (ibfd->target_defaulted
+      && (target_defaulted
 	  || bfd_get_arch (ibfd) != bfd_get_arch (obfd)))
     {
       if (bfd_get_arch (ibfd) == bfd_arch_unknown)
@@ -3622,7 +3616,8 @@ fail:
 static bool
 copy_archive (bfd *ibfd, bfd *obfd, const char *output_target,
 	      bool force_output_target,
-	      const bfd_arch_info_type *input_arch)
+	      const bfd_arch_info_type *input_arch,
+	      bool target_defaulted)
 {
   struct name_list
     {
@@ -3691,6 +3686,8 @@ copy_archive (bfd *ibfd, bfd *obfd, const char *output_target,
       int stat_status = 0;
       bool ok_object;
       const char *element_name;
+
+      this_element->is_strip_input = 1;
 
       element_name = bfd_get_filename (this_element);
       /* PR binutils/17533: Do not allow directory traversal
@@ -3773,13 +3770,16 @@ copy_archive (bfd *ibfd, bfd *obfd, const char *output_target,
 
 #if BFD_SUPPORTS_PLUGINS
       /* Copy LTO IR file as unknown object.  */
-      if (bfd_plugin_target_p (this_element->xvec))
+      if ((!lto_sections_removed
+	   && this_element->lto_type == lto_slim_ir_object)
+	  || bfd_plugin_target_p (this_element->xvec))
 	ok_object = false;
       else
 #endif
       if (ok_object)
 	{
-	  ok = copy_object (this_element, output_element, input_arch);
+	  ok = copy_object (this_element, output_element, input_arch,
+			    target_defaulted);
 
 	  if (!ok && bfd_get_arch (this_element) == bfd_arch_unknown)
 	    /* Try again as an unknown object file.  */
@@ -3879,6 +3879,8 @@ copy_file (const char *input_filename, const char *output_filename, int ofd,
   char **core_matching;
   off_t size = get_file_size (input_filename);
   const char *target = input_target;
+  bool target_defaulted = (!input_target
+			   || strcmp (input_target, "default") == 0);
 
   if (size < 1)
     {
@@ -3948,6 +3950,8 @@ copy_file (const char *input_filename, const char *output_filename, int ofd,
       break;
     }
 
+  ibfd->is_strip_input = 1;
+
   if (bfd_check_format (ibfd, bfd_archive))
     {
       bool force_output_target;
@@ -3955,7 +3959,8 @@ copy_file (const char *input_filename, const char *output_filename, int ofd,
 
       /* bfd_get_target does not return the correct value until
 	 bfd_check_format succeeds.  */
-      if (output_target == NULL)
+      if (output_target == NULL
+	  || strcmp (output_target, "default") == 0)
 	{
 	  output_target = bfd_get_target (ibfd);
 	  force_output_target = false;
@@ -3986,7 +3991,7 @@ copy_file (const char *input_filename, const char *output_filename, int ofd,
 	}
 
       if (!copy_archive (ibfd, obfd, output_target, force_output_target,
-			 input_arch))
+			 input_arch, target_defaulted))
 	status = 1;
     }
   else if (
@@ -4010,7 +4015,8 @@ copy_file (const char *input_filename, const char *output_filename, int ofd,
 
       /* bfd_get_target does not return the correct value until
 	 bfd_check_format succeeds.  */
-      if (output_target == NULL)
+      if (output_target == NULL
+	  || strcmp (output_target, "default") == 0)
 	output_target = bfd_get_target (ibfd);
 
       if (ofd >= 0)
@@ -4041,7 +4047,7 @@ copy_file (const char *input_filename, const char *output_filename, int ofd,
       else
 #endif
 	{
-	  if (! copy_object (ibfd, obfd, input_arch))
+	  if (! copy_object (ibfd, obfd, input_arch, target_defaulted))
 	    status = 1;
 
 	  /* PR 17512: file: 0f15796a.
@@ -5066,6 +5072,11 @@ strip_main (int argc, char *argv[])
 					       SECTION_CONTEXT_REMOVE)
 			  || !!find_section_list (".llvm.lto", false,
 					       SECTION_CONTEXT_REMOVE));
+  /* NB: Must keep .gnu.debuglto_* sections unless all GCC LTO sections
+     will be removed to avoid undefined references to symbols in GCC LTO
+     debug sections.  */
+  if (!lto_sections_removed)
+    find_section_list (".gnu.debuglto_*", true, SECTION_CONTEXT_KEEP);
 #endif
 
   i = optind;

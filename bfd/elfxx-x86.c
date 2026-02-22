@@ -882,6 +882,8 @@ _bfd_x86_elf_link_check_relocs (bfd *abfd, struct bfd_link_info *info)
 		  h = (struct elf_link_hash_entry *) h->root.u.i.link;
 		  elf_x86_hash_entry (h)->tls_get_addr = 1;
 		}
+
+	      htab->has_tls_get_addr_call = 1;
 	    }
 
 	  /* Pass NULL for __ehdr_start which will be defined by
@@ -3143,6 +3145,12 @@ _bfd_x86_elf_copy_indirect_symbol (struct bfd_link_info *info,
   /* Copy gotoff_ref so that elf_i386_adjust_dynamic_symbol will
      generate a R_386_COPY reloc.  */
   edir->gotoff_ref |= eind->gotoff_ref;
+
+  /* Copy non_got_ref_without_indirect_extern_access so that
+     _bfd_x86_elf_adjust_dynamic_symbol will handle
+     GNU_PROPERTY_1_NEEDED_INDIRECT_EXTERN_ACCESS properly.  */
+  edir->non_got_ref_without_indirect_extern_access
+    |= eind->non_got_ref_without_indirect_extern_access;
 
   edir->zero_undefweak |= eind->zero_undefweak;
 

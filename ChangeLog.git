@@ -1,4 +1,1076 @@
+2025-11-10  Sam James  <sam@gentoo.org>
+
+	This is the 2.45.1 release
+
+2025-11-10  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-11-09  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-11-08  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-11-07  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-11-06  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-11-05  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-11-04  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-11-03  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-11-02  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-11-01  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-10-31  H.J. Lu  <hjl.tools@gmail.com>
+
+	lto: Set plugin_format to bfd_plugin_no only if known_used is set
+	commit b21318bd2c29fcca8f99c1de7facdaa5cb2e66e2
+	Author: Joseph Myers <joseph@codesourcery.com>
+	Date:   Thu May 11 14:31:09 2023 +0000
+
+	    Add LDPT_REGISTER_CLAIM_FILE_HOOK_V2 linker plugin hook [GCC PR109128]
+
+	added the LDPT_REGISTER_CLAIM_FILE_HOOK_V2 linker plugin hook for offload
+	support.  Since the V2 linker plugin hook doesn't claim the offload IR if
+	known_used is unset, set input plugin_format to bfd_plugin_no only if
+	known_used is set or the V2 linker plugin hook is unused.
+
+		PR ld/33584
+		* plugin.c (plugin_object_p): Set plugin_format to bfd_plugin_no
+		only if known_used is set or the V2 linker plugin hook is unused.
+
+	(cherry picked from commit 19c4084cfaadabe7d514a98019d68fe0a8bb8940)
+
+2025-10-31  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-10-30  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-10-29  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-10-28  Alfie Richards  <alfie.richards@arm.com>
+
+	aarch64: gas: Allow movprfx with fmmla and bfscale [PR gas/33562]
+	These instructions were previously incorrectly marked as not accepting
+	movprfx.  Fix this and add tests.
+
+		PR gas/33562
+
+	opcodes:
+		* aarch64-tbl.h: Update widening fmmmla and bfscale instructions.
+	gas:
+		* testsuite/gas/aarch64/f8f16mm_sve2-bad.l: Update test with movprfx.
+		* testsuite/gas/aarch64/f8f16mm_sve2.d: Ditto.
+		* testsuite/gas/aarch64/f8f16mm_sve2.s: Ditto.
+		* testsuite/gas/aarch64/f8f32mm_sve2-bad.l: Ditto.
+		* testsuite/gas/aarch64/f8f32mm_sve2.d: Ditto.
+		* testsuite/gas/aarch64/f8f32mm_sve2.s: Ditto.
+		* testsuite/gas/aarch64/sve-f16f32mm-bad.l: Ditto.
+		* testsuite/gas/aarch64/sve-f16f32mm.d: Ditto.
+		* testsuite/gas/aarch64/sve-f16f32mm.s: Ditto.
+		* testsuite/gas/aarch64/sve-bfscale-sve2.s: Ditto.
+		* testsuite/gas/aarch64/sve-bfscale-sve2.d: Ditto.
+
+	Approved-By: Alice Carlotti <alice.carlotti@arm.com>
+
+2025-10-28  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-10-27  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-10-26  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-10-25  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-10-24  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-10-23  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-10-22  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-10-21  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-10-20  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-10-19  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-10-18  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-10-17  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-10-16  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-10-15  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-10-14  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-10-13  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-10-12  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-10-11  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-10-10  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-10-09  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-10-08  Andre Vieira  <andre.simoesdiasvieira@arm.com>
+
+	aarch64, gas: Relax Armv9.6-A mandatory feature set
+	Remove FPRCVT and SVE2p2 from the set of mandatory features for Armv9.6-A.
+
+	(cherry picked from commit 94861aa1c05d18f9d870cf4ed6782877b796ec7c)
+
+2025-10-08  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-10-07  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-10-06  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-10-05  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-10-04  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-10-03  H.J. Lu  <hjl.tools@gmail.com>
+
+	i386: Add GLIBC_ABI_GNU_TLS version dependency
+	On Linux/i386, programs and shared libraries compiled with
+	-mtls-dialect=gnu may fail silently at run-time against glibc without
+	the GNU TLS run-time fix for:
+
+	https://sourceware.org/bugzilla/show_bug.cgi?id=32996
+
+	The glibc version tag, GLIBC_ABI_GNU_TLS, has been added to indicate
+	that glibc has the working GNU TLS run-time:
+
+	commit ed1b7a5a489ab555a27fad9c101ebe2e1c1ba881
+	Author: H.J. Lu <hjl.tools@gmail.com>
+	Date:   Mon Jul 28 12:16:11 2025 -0700
+
+	    i386: Add GLIBC_ABI_GNU_TLS version [BZ #33221]
+
+	Add the --gnu-tls-tag option to x86-64 ELF linker to add the
+	GLIBC_ABI_GNU_TLS version dependency in output programs and shared
+	libraries when linking against glibc if input relocatable object files
+	call ___tls_get_addr.  The output will fail to load and run at run-time
+	against glibc which doesn't define the GLIBC_ABI_GNU_TLS version.
+
+	Add the --enable-gnu-tls-tag configure option to enable --gnu-tls-tag
+	by default.  If unspecified, linker will add the GLIBC_ABI_GNU_TLS
+	version dependency if input call ___tls_get_addr and libc.so defines
+	the GLIBC_ABI_GNU2_TLS version.
+
+	bfd/
+
+		PR ld/33287
+		* elf-linker-x86.h (elf_linker_x86_params): Add
+		gnu_tls_version_tag.
+		* elf32-i386.c (elf_backend_add_glibc_version_dependency): Add
+		GLIBC_ABI_GNU_TLS support.
+		* elfxx-x86.c (_bfd_x86_elf_link_check_relocs): Set
+		has_tls_get_addr_call to 1 if ___tls_get_addr is used.
+		* elfxx-x86.h (elf_x86_link_hash_table): Add has_tls_get_addr_call.
+
+	ld/
+
+		PR ld/33287
+		* Mention --gnu-tls-tag, --no-gnu-tls-tag and --enable-gnu-tls-tag.
+		* config.in: Regenerated.
+		* configure: Likewise.
+		* configure.ac: Add --enable-gnu-tls-tag.
+		* ld.texi: Document --gnu-tls-tag and --enable-gnu-tls-tag.
+		* ldlex.h (option_values): Add OPTION_GNU_TLS_VERSION_TAG and
+		OPTION_NO_GNU_TLS_VERSION_TAG.
+		* emultempl/elf-i386-glibc.em (elf_i386_glibc_before_parse):
+		Initialize params.gnu_tls_version_tag.
+		(PARSE_AND_LIST_LONGOPTS_386): New.
+		(PARSE_AND_LIST_OPTIONS_386): Likewise.
+		(PARSE_AND_LIST_ARGS_CASES_386): Likewise.
+		(PARSE_AND_LIST_LONGOPTS): Append $PARSE_AND_LIST_LONGOPTS_386.
+		(PARSE_AND_LIST_OPTIONS): Append $PARSE_AND_LIST_OPTIONS_386.
+		(PARSE_AND_LIST_ARGS_CASES): Append
+		$PARSE_AND_LIST_ARGS_CASES_386.
+		* testsuite/ld-i386/gnu-tls-1.s: Likewise.
+		* testsuite/ld-i386/gnu-tls-1a.rd: Likewise.
+		* testsuite/ld-i386/gnu-tls-1b.rd: Likewise.
+		* testsuite/ld-i386/i386.exp: Run PR ld/33287 tests.
+
+	(cherry picked from commit fbcdc06c238be4fd6da7fb9bff4dd4c7f749ae07)
+
+2025-10-03  H.J. Lu  <hjl.tools@gmail.com>
+
+	x86-64: Add GLIBC_ABI_DT_X86_64_PLT version dependency
+	On Linux/x86-64, programs and shared libraries created with -z mark-plt
+	have the GLIBC_2.36 version tag dependency since -z mark-plt uses the
+	r_addend field of the R_X86_64_JUMP_SLOT relocation to store the offset
+	of the indirect branch instruction.  Glibc versions which don't have the
+	commit added to glibc 2.36:
+
+	commit f8587a61892cbafd98ce599131bf4f103466f084
+	Author: H.J. Lu <hjl.tools@gmail.com>
+	Date:   Fri May 20 19:21:48 2022 -0700
+
+	    x86-64: Ignore r_addend for R_X86_64_GLOB_DAT/R_X86_64_JUMP_SLOT
+
+	won't ignore the r_addend value in the R_X86_64_JUMP_SLOT relocation.  If
+	glibc versions defines GLIBC_ABI_DT_X86_64_PLT version tag with
+
+	commit 399384e0c8193e31aea014220ccfa24300ae5938
+	Author: H.J. Lu <hjl.tools@gmail.com>
+	Date:   Thu Aug 14 07:03:20 2025 -0700
+
+	    x86-64: Add GLIBC_ABI_DT_X86_64_PLT [BZ #33212]
+
+	to indicate inclusion of the commit:
+
+	commit f8587a61892cbafd98ce599131bf4f103466f084
+	Author: H.J. Lu <hjl.tools@gmail.com>
+	Date:   Fri May 20 19:21:48 2022 -0700
+
+	    x86-64: Ignore r_addend for R_X86_64_GLOB_DAT/R_X86_64_JUMP_SLOT
+
+	we can add GLIBC_ABI_DT_X86_64_PLT version tag dependency, instead of
+	GLIBC_2.36 version tag dependency.
+
+		PR ld/33213
+		* elf-bfd.h (_bfd_elf_link_add_glibc_version_dependency): Change
+		return type to bool.
+		* elf64-x86-64.c (elf_x86_64_add_glibc_version_dependency): Add
+		GLIBC_ABI_DT_X86_64_PLT version tag dependency, instead of,
+		GLIBC_2.36 version tag dependency, for -z mark-plt if libc.so
+		defines GLIBC_ABI_DT_X86_64_PLT version tag.
+		* elflink.c (_bfd_elf_link_add_glibc_version_dependency): Change
+		return type to bool.  Return false if elf_link_add_glibc_verneed
+		returns false.
+
+	(cherry picked from commit 66e4999f343f85116cf2dda137cc0f31ac793ce6)
+
+2025-10-03  H.J. Lu  <hjl.tools@gmail.com>
+
+	x86: Add GLIBC_ABI_GNU2_TLS version dependency
+	On Linux/x86, programs and shared libraries compiled with
+	-mtls-dialect=gnu2 may fail silently at run-time against glibc without
+	the GNU2 TLS run-time fixes for:
+
+	https://sourceware.org/bugzilla/show_bug.cgi?id=31501
+	https://sourceware.org/bugzilla/show_bug.cgi?id=31372
+
+	A version tag, GLIBC_ABI_GNU2_TLS, has been added to glibc to indicate
+	that glibc has the working GNU2 TLS run-time.  Add the --gnu2-tls-tag
+	option to i386/x86-64 ELF linker to add the GLIBC_ABI_GNU2_TLS version
+	dependency in output programs and shared libraries when linking against
+	glibc if input relocatable object files have R_386_TLS_DESC_CALL or
+	R_X86_64_TLSDESC_CALL relocation.  The output will fail to load and run
+	at run-time against glibc which doesn't define the GLIBC_ABI_GNU2_TLS
+	version.
+
+	Add the --enable-gnu2-tls-tag configure option to enable --gnu2-tls-tag
+	by default.  If unspecified, linker will add the GLIBC_ABI_GNU2_TLS
+	version dependency if input object files have R_386_TLS_DESC_CALL or
+	R_X86_64_TLSDESC_CALL relocation and libc.so defines the GLIBC_ABI_GNU2_TLS
+	version.
+
+	Update elf_link_add_glibc_verneed to properly add the GLIBC_2.36 version
+	dependency when -z mark-plt -z nopack-relative-relocs passed to x86-64
+	ELF linker.
+
+	bfd/
+
+		PR ld/33130
+		* elf-bfd.h (_bfd_elf_link_add_glibc_version_dependency): Add
+		a pointer to bool argument.
+		* elf-linker-x86.h (elf_linker_x86_params): Add
+		gnu2_tls_version_tag.
+		* elf32-i386.c (elf_i386_scan_relocs): Set has_tls_desc_call to
+		1 for R_386_TLS_DESC_CALL.
+		(elf_i386_add_glibc_version_dependency): New.  Undef before
+		FreeBSD support.
+		* elf64-x86-64.c (elf_x86_64_scan_relocs): Set has_tls_desc_call
+		to 1 for R_X86_64_TLSDESC_CALL.
+		(elf_x86_64_add_glibc_version_dependency): Add GLIBC_ABI_GNU2_TLS
+		version dependency if GLIBC_ABI_GNU2_TLS dependency isn't disabled
+		and has_tlsdesc_call isn't 0.
+		(elf_backend_add_glibc_version_dependency): Undef before CloudABI
+		support and redefine for elf32-x86-64.
+		* elflink.c (elf_link_add_glibc_verneed): Changed to return bool.
+		Remove the pointer to elf_find_verdep_info argument.  Add a
+		pointer to bool argument, auto_version. Return true if linked
+		against glibc.  Otherwise return false.  If the version dependency
+		is added, set *auto_version to true.  If *auto_version is true,
+		add the version dependency only if libc.so defines the version.
+		(_bfd_elf_link_add_glibc_version_dependency): Add a pointer to
+		bool argument and pass it to elf_link_add_glibc_verneed.
+		(_bfd_elf_link_add_dt_relr_dependency): Pass NULL to
+		_bfd_elf_link_add_glibc_version_dependency.
+		* elfxx-x86.h (elf_x86_link_hash_table): Add has_tls_desc_call.
+
+	ld/
+
+		PR ld/33130
+		* NEWS: Mention --gnu2-tls-tag, --no-gnu2-tls-tag and
+		--enable-gnu2-tls-tag.
+		* config.in: Regenerated.
+		* configure: Likewise.
+		* configure.ac: Add --enable-gnu2-tls-tag.
+		* ld.texi: Document --gnu2-tls-tag/--no-gnu2-tls-tag.
+		* ldlex.h (option_values): Add OPTION_GNU2_TLS_VERSION_TAG and
+		OPTION_NO_GNU2_TLS_VERSION_TAG.
+		* emulparams/elf32_x86_64.sh (EXTRA_EM_FILE): Changed to
+		"elf-x86-64-glibc".
+		* emulparams/elf_i386.sh (EXTRA_EM_FILE): Set to "elf-i386-glibc".
+		* emulparams/elf_i386_fbsd.sh (EXTRA_EM_FILE): New.  Set to
+		"elf-x86".
+	        * emulparams/elf_i386_haiku.sh (EXTRA_EM_FILE): Likewise.
+		* emulparams/elf_x86_64.sh (EXTRA_EM_FILE): Likewise.
+		* emulparams/elf_x86_64_cloudabi.sh (EXTRA_EM_FILE): New.  Set to
+		"elf-x86-64".
+		* emulparams/elf_x86_64_fbsd.sh (EXTRA_EM_FILE): New.  Set to
+		"elf-x86-64".
+		* emulparams/elf_x86_64_haiku.sh (EXTRA_EM_FILE): Likewise.
+		* (EXTRA_EM_FILE): Likewise.
+		* (EXTRA_EM_FILE): Likewise.
+	        * emultempl/elf-i386-glibc.em: New file.
+		* emultempl/elf-x86-64-glibc.em: Likewise.
+		* emultempl/elf-x86-64.em: Likewise.
+		* emultempl/elf-x86-glibc.em: Likewise.
+		* emultempl/elf-x86.em (elf_x86_64_before_parse): Removed.
+		(LDEMUL_BEFORE_PARSE): Likewise.
+		(elf_x86_64_before_allocation): Likewise.
+		(LDEMUL_BEFORE_ALLOCATION): Likewise.
+		* emultempl/solaris2-x86-64.em: New file.
+		* testsuite/ld-i386/gnu2-tls-1.s: Likewise.
+		* testsuite/ld-i386/gnu2-tls-1a.rd: Likewise.
+		* testsuite/ld-i386/gnu2-tls-1b.rd: Likewise.
+		* testsuite/ld-x86-64/gnu2-tls-1.s: Likewise.
+		* testsuite/ld-x86-64/gnu2-tls-1a.rd: Likewise.
+		* testsuite/ld-x86-64/gnu2-tls-1b.rd: Likewise.
+		* testsuite/ld-x86-64/mark-plt-2.rd: Likewise.
+		* testsuite/ld-x86-64/mark-plt-2.s: Likewise.
+		* testsuite/ld-i386/i386.exp: Run GLIBC_ABI_GNU2_TLS tests.
+		* testsuite/ld-x86-64/x86-64.exp: Likewise.
+
+	(cherry picked from commit 0d1e88f8bfb0e62f37bf8a89172cd91373ace5e6)
+
+2025-10-03  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-10-02  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-10-01  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-09-30  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-09-29  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-09-28  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-09-27  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-09-26  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-09-25  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-09-24  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-09-23  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-09-22  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-09-21  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-09-20  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-09-19  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-09-18  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-09-17  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-09-16  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-09-15  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-09-14  H.J. Lu  <hjl.tools@gmail.com>
+
+	x86: Copy non_got_ref_without_indirect_extern_access
+	Copy non_got_ref_without_indirect_extern_access when copying indirect
+	symbol for weak alias so that _bfd_x86_elf_adjust_dynamic_symbol will
+	properly handle GNU_PROPERTY_1_NEEDED_INDIRECT_EXTERN_ACCESS.
+
+	bfd/
+
+		PR ld/33409
+		* elfxx-x86.c (_bfd_x86_elf_copy_indirect_symbol): Copy
+		non_got_ref_without_indirect_extern_access.
+
+	ld/
+
+		PR ld/33409
+		* testsuite/config/default.exp (DIRECT_EXTERN_ACCESS_CFLAGS): New.
+		(NO_DIRECT_EXTERN_ACCESS_CFLAGS): Likewise.
+		* testsuite/ld-elf/shared.exp: Run PR ld/33409 tests.
+		* testsuite/ld-elf/pr33409a.c: New file.
+		* testsuite/ld-elf/pr33409b.c: Likewise.
+		* testsuite/ld-elf/pr33409c.c: Likewise.
+
+	(cherry picked from commit 59ada1f6d61bfc7b119f0ae6edcc23dc569e70ad)
+
+2025-09-14  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-09-13  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-09-12  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-09-11  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-09-10  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-09-09  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-09-08  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-09-07  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-09-06  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-09-05  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-09-04  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-09-03  Alan Modra  <amodra@gmail.com>
+
+	visium MAX_MEM_FOR_RS_ALIGN_CODE
+	Commit 7ca6020a4e52 "tidy target HANDLE_ALIGN" didn't account for
+	the "fix" amount emitted by visium_handle_align.  This didn't show up
+	as a problem due to frag alignment hiding the error, until I started
+	messing with struct frag.
+
+		* config/tc-visium.h (MAX_MEM_FOR_RS_ALIGN_CODE): Correct.
+
+	(cherry picked from commit 74fe8e29dc61bbe2c258c2c13f4b91f99faf6571)
+
+2025-09-03  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-09-02  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-09-01  H.J. Lu  <hjl.tools@gmail.com>
+
+	strip: Don't treat fat IR objects as plugin object
+	Fat IR objects contains both regular sections and IR sections.  After
+
+	commit 717a38e9a02109fcbcb18bb2ec3aa251e2ad0a0d
+	Author: H.J. Lu <hjl.tools@gmail.com>
+	Date:   Sun May 4 05:12:46 2025 +0800
+
+	    strip: Add GCC LTO IR support
+
+	"strip --strip-debug" no longer strips debug sections in fat IR objects
+	since fat IR objects are recognized as plugin object and copied as unknown
+	objects.  Add a is_strip_input field to bfd to indicate called from strip.
+	Update bfd_check_format_matches not to treat archive member nor standalone
+	fat IR object as IR object so that strip can remove debug and IR sections
+	in fat IR object.  For archive member, it is copied as an unknown object
+	if the plugin target is in use or it is a slim IR object.  For standalone
+	fat IR object, it is copied as non-IR object.
+
+	bfd/
+
+		PR binutils/33246
+		* archive.c: Include "plugin-api.h" and "plugin.h" if plugin is
+		enabled.
+		(_bfd_compute_and_write_armap): Don't complain plugin is needed
+		when the plugin target is in use.
+		* bfd-in2.h: Regenerated.
+		* bfd.c (bfd): Add is_strip_input.
+		* format.c (bfd_set_lto_type): If there is .llvm.lto section,
+		set LTO type to lto_fat_ir_object.
+		(bfd_check_format_matches): Don't set LTO type when setting
+		format.  When called from strip, don't treat archive member nor
+		standalone fat IR object as an IR object.
+		* plugin.c (bfd_plugin_get_symbols_in_object_only): Copy LTO
+		type derived from input sections.
+
+	nm/
+
+		PR binutils/33246
+		* nm.c (filter_symbols): Don't complain plugin is needed when
+		the plugin target is in use.
+		(display_rel_file): Likewise.
+		* objcopy.c (copy_archive): Set the BFD is_strip_input field of
+		archive member to 1 to indicate called from strip.  Also copy
+		slim IR archive member as unknown object.
+		(copy_file): Set the BFD is_strip_input field of input bfd to
+		1 to indicate called from strip.
+		(strip_main): Keep .gnu.debuglto_* sections unless all GCC LTO
+		sections will be removed.
+
+	ld/
+
+		PR binutils/33246
+		* testsuite/ld-plugin/lto-binutils.exp (run_pr33246_test): New.
+		Run binutils/33246 tests with GCC and Clang.
+		* testsuite/ld-plugin/pr33246.c: New file.
+
+	(cherry picked from commit c2729c37f10af09126b2916215cae425ae724f55)
+
+2025-09-01  H.J. Lu  <hjl.tools@gmail.com>
+
+	strip: Treat "default" output_target as unspecified
+	Treat output target as unspecified if it is set to "default".
+
+	binutils/
+
+		PR binutils/33230
+		* objcopy.c (copy_file): Treat "default" output_target as
+		unspecified.
+
+	binutils/testsuite/
+
+		PR binutils/33230
+		* binutils-all/x86-64/x86-64.exp (run_pr33230_test): New.
+		Run binutils/33230 tests with readelf if supported.
+
+	(cherry picked from commit 3ac83564eb3c858eb1add02b6e86b5628e4abd78)
+
+2025-09-01  H.J. Lu  <hjl.tools@gmail.com>
+
+	strip: Don't check target_defaulted in input BFD
+	The target_defaulted field in BFD is set to true if the target isn't
+	specified.  After
+
+	commit 717a38e9a02109fcbcb18bb2ec3aa251e2ad0a0d
+	Author: H.J. Lu <hjl.tools@gmail.com>
+	Date:   Sun May 4 05:12:46 2025 +0800
+
+	    strip: Add GCC LTO IR support
+
+	the target is set to "plugin" if BFD supports plugin when the target
+	isn't specified nor default.  Update strip to check the input target,
+	instead of the target_defaulted field in input BFD.
+
+		PR binutils/33230
+		* objcopy.c (copy_object): Add a bool argument, target_defaulted,
+		to indicate if the input target isn't specified nor default.
+		Check it instead of ibfd->target_defaulted.
+		(copy_archive): Add a bool argument, target_defaulted, and pass
+		it to copy_object.
+		(copy_file): Set target_defaulted to true if the input target
+		isn't specified and pass it to copy_archive and copy_object.
+		* testsuite/binutils-all/x86-64/pr33230.obj.bz2: New file.
+		* testsuite/binutils-all/x86-64/x86-64.exp: Run PR binutils/33230
+		tests.
+
+	(cherry picked from commit 8e885fece150ee97e5b0e78363e7fe9888ae9c29)
+
+2025-09-01  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-08-31  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-08-30  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-08-29  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-08-28  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-08-27  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-08-26  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-08-25  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-08-24  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-08-23  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-08-22  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-08-21  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-08-20  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-08-19  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-08-18  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-08-17  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-08-16  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-08-15  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-08-14  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-08-13  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-08-12  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-08-11  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-08-10  Nick Alcock  <nick.alcock@oracle.com>
+
+	libctf: link: rejig lazy opening to not need weak symbols
+	The ctf_link_add_ctf API function has a 'lazy opening' feature whereby,
+	if you pass in the file but not a CTF archive, the archive is opened
+	as late as possible during links.  This is valuable mostly in
+	cu-mapped links (a feature not accessible via GNU ld), where it
+	ensures that, rather than eventually needing memory for the original
+	link inputs, the smushed-together cu-mapped intermediate outputs,
+	*and* the final output, we only need enough memory for the smushed-
+	together outputs, the final output, and one input, since the inputs
+	can be closed immediately after they are smushed together.
+
+	(In GNU ld, the feature is useless because it loads all sections into
+	memory anyway.)
+
+	The lazy-opening feature uses libctf's ctf_open function, which uses
+	BFD: so it is not available in libctf-nobfd -- except that I thought I
+	had a cunning trick, and used a weak symbol so that if you linked
+	libctf-nobfd into your program and then also linked in bfd, the feature
+	stayed enabled.
+
+	This is silly -- if your program is licensed such that you can link in
+	BFD, you can just link in libctf.so and not bother with libctf-nobfd.so
+	in the first place.  Worse, the weak symbol usage broke MacOS builds,
+	since MacOS's system compiler uses a different means of introducing weak
+	symbols.  We could test for and use it, but this is the only place in
+	libctf to use weak symbols at all, and the feature of lazy-opening with
+	libctf-nobfd is so marginal we might as well drop it: it's almost
+	certain there are zero users, certainly fewer users than users of MacOS
+	with the system compiler.
+
+	While we're at it, simplify things by deleting the never-implemented
+	feature (not exposed in the API) to allow linking together raw buffers
+	of CTF data.  If we need it we can bring it back, but all it's doing
+	right now is complicating the code to no end at all.
+
+	libctf/
+		PR libctf/33194
+		* ctf-link.c (ctf_open): Delete weak pragma.
+		(ctf_link_add): Fuse with...
+		(ctf_link_add_ctf): ... this function.  Drop BUF, N args
+		and corresponding unimplemented feature warnings.  Only check
+		NOBFD to see whether lazy loading is available, not PIC as
+		well.
+		(ctf_link_lazy_open): Likewise.
+
+	(cherry picked from commit d3e582895b2038feb47b68f1e03efaa0d9dae325)
+
+2025-08-10  Nick Alcock  <nick.alcock@oracle.com>
+
+	libctf: don't run tests requiring deduplicating linker unless one is in use
+	Before now, we were relying on gcc -B to repoint GCC at our freshly-built
+	linker, and assuming we could use this to run tests that do linker dedup.
+
+	This is, alas, not reliable (building --with-ld=/an/absolute/path bypasses
+	-B searches for the linker), and we would like the libctf tests in
+	particular to not fail if the compiler uses a linker that cannot deduplicate
+	(simply skipping such tests).
+
+	Add a new testsuite function that tries to link one of the lookup tests'
+	testcases (which is known to produce conflicting types, i.e. a dict with
+	per-translation-unit children) and then does an objdump and greps it for
+	signs of the per-translation-unit children.  If there are none, the linker
+	probably just concatenated the sections: i.e., it is not a linker that
+	can deduplicate CTF.
+
+	libctf/
+		PR libctf/33162
+		* testsuite/config/default.exp (objdump): Introduce.
+		(OBJDUMPFLAGS): Likewise.
+		* testsuite/lib/ctf-lib.exp (check_ctf_linker_dedup): New.
+		* testsuite/libctf-lookup/lookup.exp: Use it.
+		* testsuite/libctf-regression/libctf-repeat-cu.exp: Likewise.
+		* testsuite/libctf-regression/regression.exp: Likewise.
+
+	(cherry picked from commit 4983bb052d3a57fe1b43334071ba61a8443bb5aa)
+
+2025-08-10  Rainer Orth  <ro@CeBiTec.Uni-Bielefeld.DE>
+
+	libctf: exclude always-emitted Solaris symbols from the symtypetab
+	If we're skipping _BEGIN_ and _END_ we should certainly skip all the other
+	ABI-required always-emitted symbols given in ld/emultempl/solaris2*em as
+	well.  (This fixes a couple of diagnostics tests, but that's just because
+	the tests are quite sensitive to CTF section sizes, and introducing any
+	symtypetab entries for those tests perturbs those.)
+
+	Some of these are usually STT_NOTYPE, but not always: if programs already
+	emitted the symbol they might end up with any type, in particular
+	STT_OBJECT, and appear in the symtypetabs.
+
+	[nca: added commit log, added more symbols]
+
+	libctf/
+		PR libctf/33162
+		* ctf-serialize.c (ctf_symtab_skippable): Skip
+		more always-emitted Solaris symbols.
+
+	(cherry picked from commit 4214ca9036c8f5d01025d0505ff1167700af5f98)
+
+2025-08-10  Nick Alcock  <nick.alcock@oracle.com>
+
+	libctf: get libctf-nobfd.ver from the right place with Solaris ld
+	We generate de-commented version scripts for Solaris ld (whose
+	-z gnu-version-script linker option does not support comments),
+	but after we switched to generating libctf-nobfd.ver itself, we
+	failed to adjust this code to pick it up from the new location.
+
+	libctf/
+		PR libctf/33161
+		* configure.ac: Fix libctf-nobfd.ver path on Solaris.
+		* configure: Regenerated.
+
+	(cherry picked from commit 3ff8956e4bf46ffd638bf12ea4788a858e905023)
+
+2025-08-10  Rainer Orth  <ro@CeBiTec.Uni-Bielefeld.DE>
+
+	libctf: do not use mmap on Solaris 11
+	Writable mmaps and read are inconsistent with each other on Solaris 11.4,
+	which breaks archive writing.  Simply assert that Solaris 2.11 doesn't have
+	mmap, falling back to read(): the archive format is being bumped shortly, to
+	one with completely different writeout code, so this workaround need not
+	stay for long.
+
+	[nca: added commit log]
+
+	libctf/
+		PR libctf/29292
+		* configure.ac: Turn off mmap on Solaris 2.11.
+		* configure: Regenerated.
+
+	(cherry picked from commit 00d853d1fe7885d0a685584f32b7ed70485c6def)
+
+2025-08-10  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-08-09  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-08-08  Xi Ruoyao  <xry111@xry111.site>
+
+	LoongArch: Fix symbol size after relaxation
+	There's a logic error in loongarch_relax_perform_deletes: when there's
+	not any delete operation of which the start address is strictly smaller
+	than the symbol address, splay_tree_predecessor() will return nullptr
+	and the symbol size will be unchanged even if some bytes of it are
+	removed.
+
+	Make the logic more complete to fix this issue.  Also factor out the
+	symbol size adjustment logic into a function to avoid code bloating.
+
+	Tested-by: WANG Xuerui <git@xen0n.name>
+
+2025-08-08  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-08-07  Matthieu Longo  <matthieu.longo@arm.com>
+
+	libiberty: sync with gcc
+	Import the following commits from GCC as of r16-3056-gca2169c65bd169:
+		0d0837df697 libiberty: disable logging of list content for doubly-linked list tests
+
+2025-08-07  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-08-06  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-08-05  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-08-04  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-08-03  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-08-02  Alan Modra  <amodra@gmail.com>
+
+	Re: resbin: don't pass NULL as printf %s arg
+	Commit c6c8d0b82175 went completely the wrong way.  "key" needs to be
+	NULL as that reads a different type of data.
+
+		PR 33244
+		* resbin.c (get_version_header): Don't pass a NULL key on to
+		toosmall.
+		(bin_to_res_version): Restore NULL key cases.
+
+	(cherry picked from commit 891d1654d7314fa520f708dbc5f1bf855d15bd40)
+
+2025-08-02  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-08-01  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-07-31  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-07-30  Alan Modra  <amodra@gmail.com>
+
+	PR 33229 nds32 gas segfaults on gcc output
+	Commit 1ac26e9f7ac2 replaced ISSPACE with is_whitespace, but the
+	former returns true on EOL while the latter does not.  Sprinkle
+	is_end_of_stmt tests to fix this bug.
+
+	The same segfault can be triggered by a ".relax_hint" with no
+	following instructions.  Fix that too.
+
+		* config/tc-nds32.c (nds32_lookup_pseudo_opcode): Use
+		is_end_of_stmt along with is_whitespace.
+		(nds32_relax_relocs, nds32_relax_hint, nds32_flag),
+		(ict_model: Likewise.
+		(nds32_elf_append_relax_relocs): Return on no opcode.
+		* testsuite/gas/nds32/nds32.exp: Find .d files automatically.
+		* testsuite/gas/nds32/pr33229.d,
+		* testsuite/gas/nds32/pr33229.s: New test.
+
+	(cherry picked from commit 303045d9539d9032208b8b67f222943ff4c96b05)
+
+2025-07-30  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-07-29  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-07-28  GDB Administrator  <gdbadmin@sourceware.org>
+
+	Automatic date update in version.in
+
+2025-07-28  Alan Modra  <amodra@gmail.com>
+
+	Fix more unused variable warnings
+	(cherry picked from commit 9472a0558d67610b07776d34b1dbdcc8e40f393c)
+
+	Fix unused variable warnings
+	(cherry picked from commit 1cfce7750aefc84768e143076bac239134ceb40d)
+
+2025-07-28  Sam James  <sam@gentoo.org>
+
+	binutils: drop unused note_size, contents, old variables
+	GCC trunk recently had improvements to its -Wunused-but-set-variable which
+	picked up that contents and hence note_size & old aren't used at all in the
+	end.
+
+		* objcopy.c (merge_gnu_build_notes): Drop unused 'note_size', 'contents',
+		and 'old' variables.
+
+	(cherry picked from commit d3d1718602b179d8ec833851f5cb67ab9d314a92)
+
+2025-07-28  Sam James  <sam@gentoo.org>
+
+	bfd: drop unused elt_no
+	GCC trunk recently had improvements to its -Wunused-but-set-variable which
+	picked up that elt_no isn't used at all in the end.
+
+		* archive.c (_bfd_compute_and_write_armap): Drop unused elt_no.
+
+	(cherry picked from commit 11153b13a56dae4ddd068ccf812ebc295783edf9)
+
+2025-07-28  Alan Modra  <amodra@gmail.com>
+
+	Re: Re-enable development on the 2.45 branch
+	regen configure for the version bump 2.45 -> 2.45.0
+
 2025-07-27  Nick Clifton  <nickc@redhat.com>
+
+	Re-enable development on the 2.45 branch
+
+	This is the 2.45 release
 
 	Oops - test files accidentally omitted from previous deltas
 
@@ -276564,55 +277636,3 @@
 2021-07-04  GDB Administrator  <gdbadmin@sourceware.org>
 
 	Automatic date update in version.in
-
-2021-07-03  H.J. Lu  <hjl.tools@gmail.com>
-
-	gprof: Regenerate configure
-		* configure: Regenerated.
-
-2021-07-03  Joel Brobecker  <brobecker@adacore.com>
-
-	Update NEWS post GDB 11 branch creation.
-	gdb/ChangeLog:
-
-		* NEWS: Create a new section for the next release branch.
-		Rename the section of the current branch, now that it has
-		been cut.
-
-2021-07-03  Joel Brobecker  <brobecker@adacore.com>
-
-	Bump version to 12.0.50.DATE-git.
-	Now that the GDB 11 branch has been created, we can
-	bump the version number.
-
-	gdb/ChangeLog:
-
-		GDB 11 branch created (4b51505e33441c6165e7789fa2b6d21930242927):
-		* version.in: Bump version to 12.0.50.DATE-git.
-
-	gdb/testsuite/ChangeLog:
-
-		* gdb.base/default.exp: Change $_gdb_major to 12.
-
-2021-07-03  Tom Tromey  <tom@tromey.com>
-
-	Use 'bool' more idiomatically in dwarf_decode_lines
-	I noticed a couple of spots related to dwarf_decode_lines where the
-	'include_p' field was not being used idiomatically -- it is of type
-	bool now, so treat it as such.
-
-	gdb/ChangeLog
-	2021-07-03  Tom Tromey  <tom@tromey.com>
-
-		* dwarf2/read.c (lnp_state_machine::record_line): Use 'true'.
-		(dwarf_decode_lines): Remove '=='.
-
-2021-07-03  Nick Clifton  <nickc@redhat.com>
-
-	More minor updates to the how-to-make-a-release documentation
-
-	Update version number and regenerate files
-
-	Add markers for 2.37 branch
-
-	Synchronize libiberty sources (and include/demangle.h) with GCC master version
